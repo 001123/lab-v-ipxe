@@ -4,12 +4,18 @@ on:
   push:
     tags:
       - 'v*'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag_name:
         description: 'Release tag name (e.g. v1.0.0)'
         required: false
         type: string
+
+concurrency:
+  group: release-${{ github.event.inputs.tag_name || github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -18,9 +24,68 @@ jobs:
   build-frontend:
     name: Build Frontend UI
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      version: ${{ steps.vars.outputs.version }}
+      commit_sha: ${{ steps.vars.outputs.commit_sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve Version and Update Files
+        id: vars
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v0.0.0-${GITHUB_SHA:0:7}"
+          fi
+
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v${TAG}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+          # Only commit and push if it's a valid release tag (e.g. v1.0.0)
+          if [[ "$TAG" =~ ^v[0-9] ]]; then
+            echo "==> Preparing release version ${VERSION} for tag ${TAG}..."
+
+            # Switch to main branch to push clean history
+            git checkout main || git checkout -b main origin/main
+            git pull origin main --rebase || true
+
+            chmod +x scripts/bump_version.sh
+            ./scripts/bump_version.sh "${VERSION}"
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            git add web/package.json web/package-lock.json v.mod internal/config/config.v
+            if ! git diff --staged --quiet; then
+              echo "==> Committing bumped version ${VERSION} to main..."
+              git commit -m "chore(release): bump version to ${VERSION} [skip ci]"
+              git push origin main
+              git tag -fa "${TAG}" -m "Release ${TAG}"
+              git push origin "${TAG}" --force
+            else
+              echo "==> Version files already up to date, skipping commit."
+            fi
+          else
+            echo "==> Non-release tag (${TAG}), skipping git commit."
+          fi
+
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "commit_sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -61,6 +126,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build-frontend.outputs.commit_sha }}
 
       - name: Download frontend assets
         uses: actions/download-artifact@v4
@@ -99,14 +166,7 @@ jobs:
       - name: Package release archive
         shell: bash
         run: |
-          if [ -n "${{ inputs.tag_name }}" ]; then
-            TAG="${{ inputs.tag_name }}"
-          elif [ "${{ github.ref_type }}" = "tag" ]; then
-            TAG="${{ github.ref_name }}"
-          else
-            TAG="v0.0.0-${GITHUB_SHA:0:7}"
-          fi
-
+          TAG="${{ needs.build-frontend.outputs.tag }}"
           ARCHIVE_NAME="lab-v-ipxe-${TAG}-${{ matrix.target }}"
           ARCHIVE_DIR="dist/${ARCHIVE_NAME}"
 
@@ -135,23 +195,11 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    needs: build-binaries
+    needs: [build-frontend, build-binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Resolve Release Tag
-        id: vars
-        run: |
-          if [ -n "${{ inputs.tag_name }}" ]; then
-            TAG="${{ inputs.tag_name }}"
-          elif [ "${{ github.ref_type }}" = "tag" ]; then
-            TAG="${{ github.ref_name }}"
-          else
-            TAG="v0.0.0-${GITHUB_SHA:0:7}"
-          fi
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-
       - name: Download all binary artifacts
         uses: actions/download-artifact@v4
         with:
@@ -169,7 +217,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.vars.outputs.tag }}
+          tag_name: ${{ needs.build-frontend.outputs.tag }}
           files: release-assets/*
           generate_release_notes: true
           draft: false
