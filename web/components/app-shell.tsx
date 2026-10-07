@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LogOutIcon, MenuIcon, NetworkIcon, ServerIcon, SettingsIcon } from 'lucide-react'
+import { InfoIcon, LogOutIcon, MenuIcon, NetworkIcon, ServerIcon, SettingsIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -52,6 +52,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       label: 'Settings',
       icon: SettingsIcon,
     },
+    {
+      href: '/about',
+      label: 'About',
+      icon: InfoIcon,
+    },
   ]
 
   async function onLogout() {
@@ -81,16 +86,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
 
           {/* Logo & Brand */}
-          <Link
-            href="/machines"
-            className="flex items-center gap-2.5 font-semibold text-foreground tracking-tight hover:opacity-90 transition-opacity"
-          >
-            <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <NetworkIcon className="size-4" />
-            </div>
-            <span className="font-semibold text-sm sm:text-base">iPXE ZTP</span>
-            <VersionBadge />
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/machines"
+              className="flex items-center gap-2.5 font-semibold text-foreground tracking-tight hover:opacity-90 transition-opacity"
+            >
+              <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <NetworkIcon className="size-4" />
+              </div>
+              <span className="font-semibold text-sm sm:text-base">iPXE ZTP</span>
+            </Link>
+            <VersionBadge href="/about" />
+          </div>
         </div>
 
         {/* Header Right Actions */}
@@ -195,8 +202,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm leading-tight">iPXE ZTP</span>
-                    <VersionBadge />
+                    <Link
+                      href="/machines"
+                      onClick={() => setMobileOpen(false)}
+                      className="font-semibold text-sm leading-tight hover:opacity-90 transition-opacity"
+                    >
+                      iPXE ZTP
+                    </Link>
+                    <VersionBadge href="/about" onClick={() => setMobileOpen(false)} />
                   </div>
                   <span className="text-[11px] text-muted-foreground">Provisioning server</span>
                 </div>
