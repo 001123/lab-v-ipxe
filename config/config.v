@@ -9,8 +9,8 @@ pub const version = '0.1.0'
 
 pub const default_admin_email = 'admin@ipxe.local'
 pub const default_admin_password = 'admin@pwd'
-pub const default_nfs_root = '192.168.250.4:/srv/nfs/ubuntu-24.04'
-pub const default_ubuntu_version = '24.04'
+pub const default_nfs_root = '192.168.250.4:/srv/nfs/ubuntu-26.04.1'
+pub const default_ubuntu_version = '26.04.1'
 
 pub struct Config {
 pub mut:

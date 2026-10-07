@@ -70,7 +70,7 @@ function initForm(machine: Machine | null, images: OsImage[]): MachinePayload {
     nfs_root: '',
     notes: '',
     os_name: fallback?.os_name ?? 'ubuntu',
-    os_version: fallback?.version ?? '24.04',
+    os_version: fallback?.version ?? '26.04.1',
     boot_mode: 'nfs',
     storage_layout: 'direct',
     storage_disk: '',
@@ -281,7 +281,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
               id="machine-nfs-root"
               value={form.nfs_root ?? ''}
               onChange={(e) => set('nfs_root', e.target.value)}
-              placeholder={selectedImage?.nfs_root ?? '192.168.250.4:/srv/nfs/ubuntu-24.04'}
+              placeholder={selectedImage?.nfs_root ?? '192.168.250.4:/srv/nfs/ubuntu-26.04.1'}
               className="font-mono"
             />
             <p className="text-xs text-muted-foreground">

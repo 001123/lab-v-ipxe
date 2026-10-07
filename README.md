@@ -4,7 +4,7 @@ Server ZTP (Zero Touch Provisioning) đóng gói **1 file binary duy nhất**: d
 
 - **BE**: V 0.5.2 + [veb](https://github.com/veb-org/veb) (bundled trong vlib), SQLite (`db.sqlite`), single binary.
 - **FE**: Next.js 16 (App Router, `output: 'export'` static) + React 19 + TypeScript + Tailwind v4 + shadcn/ui (Base UI) + SWR, build ra `web/out` rồi **nhúng thẳng vào binary** (`$embed_file`).
-- **MVP**: Ubuntu 24.04, **boot qua NFS** (kernel/initrd do app serve, rootfs qua NFS export có sẵn trên Proxmox), **cài root trên ZFS** (tune ARC cho máy ít RAM). Kiến trúc provider sẵn sàng cho OS khác (talos, suse, rocky...) và mode PUBLIC HTTP (netboot=url) sau này.
+- **MVP**: Ubuntu **24.04.5** / **26.04.1** (pin đúng point-release), **boot qua NFS** (kernel/initrd do app serve, rootfs qua NFS export có sẵn trên Proxmox), **cài root trên ZFS** (tune ARC cho máy ít RAM). Kiến trúc provider sẵn sàng cho OS khác (talos, suse, rocky...) và mode PUBLIC HTTP (netboot=url) sau này.
 
 ## Luồng hoạt động
 
@@ -39,13 +39,13 @@ Tài khoản mặc định (seed tự động): `admin@ipxe.local` / `admin@pwd`
 | `LAB_V_IPXE_DATA_DIR` | dev: `./tmp`, prod: `~/.local/share/lab-v-ipxe` (XDG) | Nơi chứa SQLite + assets |
 | `LAB_V_IPXE_BASE_URL` | rỗng (lấy từ Host header) | URL gốc nhúng vào script iPXE/autoinstall |
 | `LAB_V_IPXE_ADMIN_EMAIL` / `LAB_V_IPXE_ADMIN_PASSWORD` | `admin@ipxe.local` / `admin@pwd` | Tài khoản seed lần đầu |
-| `LAB_V_IPXE_UBUNTU_ISO` | rỗng | ISO local để trích kernel/initrd (**khuyến nghị** khi cùng máy với NFS). VD: `/srv/iso/ubuntu-24.04-live-server-amd64.iso` |
+| `LAB_V_IPXE_UBUNTU_ISO` | rỗng | ISO local để trích kernel/initrd (**khuyến nghị** khi cùng máy với NFS). VD: `/srv/iso/ubuntu-26.04.1-live-server-amd64.iso` |
 | `LAB_V_IPXE_UBUNTU_ASSETS_DIR` | rỗng | Thư mục đã có sẵn `vmlinuz` + `initrd` (serve trực tiếp, không cần tải) |
 | `LAB_V_IPXE_KEEP_ISO` | `false` | Giữ lại ISO sau khi tải từ internet (mặc định xoá để tiết kiệm ~4GB) |
 
-Thứ tự nguồn assets: **cache** (`<data>/assets/ubuntu/<ver>/`) → **assets dir** → **ISO local** → **tải mới** từ `releases.ubuntu.com/<ver>/` (tự dò bản `<ver>.x` mới nhất, theo version của image trong Settings).
+Thứ tự nguồn assets: **cache** (`<data>/assets/ubuntu/<ver>/`) → **assets dir** → **ISO local** → **tải mới** từ `releases.ubuntu.com/<ver>/` (version `x.y.z` = pin đúng file `ubuntu-x.y.z-live-server-amd64.iso`; version `x.y` = tự dò bản `.N` mới nhất).
 
-> Lưu ý version-skew: kernel/initrd phải khớp với ISO mà NFS server đang mount. Khi pve export `/srv/nfs/ubuntu-24.04` từ 1 ISO cụ thể, hãy dùng `LAB_V_IPXE_UBUNTU_ISO` trỏ đúng ISO đó.
+> Lưu ý version-skew: kernel/initrd phải khớp với ISO mà NFS server đang mount — vì vậy catalog nên pin đúng point-release (`24.04.5`, `26.04.1`) thay vì để auto-latest. Export trên pve và row trong Settings phải trỏ cùng một bản (vd `/srv/nfs/ubuntu-26.04.1` loop-mount đúng ISO `26.04.1`).
 
 ## Build release (1 file binary)
 
@@ -102,8 +102,8 @@ utils/proxmox/vm-ctl.sh destroy 999                # có xác nhận
 
 ## Runbook test ZTP end-to-end
 
-1. Chuẩn bị trên pve (đã có sẵn): `/srv/nfs/ubuntu-24.04` loop-mount ISO + export NFS cho `192.168.250.0/24`; `nfs-kernel-server` chạy.
-2. Chạy app trên máy trong LAN (hoặc LXC) với `LAB_V_IPXE_UBUNTU_ISO=/srv/iso/ubuntu-24.04-live-server-amd64.iso`.
+1. Chuẩn bị trên pve (đã có sẵn): `/srv/nfs/ubuntu-24.04.5` + `/srv/nfs/ubuntu-26.04.1` loop-mount ISO + export NFS cho `192.168.250.0/24`; `nfs-kernel-server` chạy.
+2. Chạy app trên máy trong LAN (hoặc LXC) với `LAB_V_IPXE_UBUNTU_ISO=/srv/iso/ubuntu-26.04.1-live-server-amd64.iso`.
 3. Trỏ `filename`/`boot` của dnsmasq về `http://<ip-app>:8080/boot.ipxe?mac=${net0/mac}`.
 4. `utils/proxmox/create-test-vm.sh --recreate` → VM boot vào iPXE → xuất hiện **pending** trên UI.
 5. UI → **Approve** (chọn OS image, nhập hostname, SSH key, password tùy chọn — mặc định `ubuntu`) → máy tự chain lại và bắt đầu cài (console iPXE hiển thị script NFS; kernel/initrd tải từ app).
@@ -115,14 +115,14 @@ utils/proxmox/vm-ctl.sh destroy 999                # có xác nhận
 
 ```bash
 curl "http://127.0.0.1:8080/boot.ipxe?mac=bc:24:11:00:24:99"          # script chờ / script cài / sanboot
-curl "http://127.0.0.1:8080/os/ubuntu/24.04/BC:24:11:00:24:99/user-data"  # YAML autoinstall
-curl -I "http://127.0.0.1:8080/assets/ubuntu/24.04/initrd"            # kernel/initrd
+curl "http://127.0.0.1:8080/os/ubuntu/26.04.1/BC:24:11:00:24:99/user-data"  # YAML autoinstall
+curl -I "http://127.0.0.1:8080/assets/ubuntu/26.04.1/initrd"          # kernel/initrd
 curl -X POST -d 'mac=bc:24:11:00:24:99&hostname=vm-test' http://127.0.0.1:8080/api/machines/installed
 ```
 
 ## Ghi chú kỹ thuật
 
-- **OS images (Settings)**: defaults là **danh sách image** `{OS, version, NFS export, default}` (lưu ở setting `os_images`; DB cũ tự migrate 2 key `nfs_root_default`/`ubuntu_version` khi khởi động). Máy chọn image khi tạo/approve và **kế thừa** NFS export từ row tương ứng (override per-máy vẫn giữ); máy phát hiện qua PXE lần đầu nhận image đánh dấu default. Thêm **version mới** (vd Ubuntu 26.04) = thêm 1 dòng trong `providers/ubuntu/ubuntu.v` `versions()` + thêm row trong UI (kèm NFS export tương ứng); thêm **OS khác** = implement `OSProvider` (`name/display_name/versions/assets_ready/install_script/user_data/meta_data`) + register trong `server/app.v` → tự xuất hiện trong dropdown.
+- **OS images (Settings)**: defaults là **danh sách image** `{OS, version, NFS export, default}` (lưu ở setting `os_images`; DB cũ tự migrate 2 key `nfs_root_default`/`ubuntu_version` khi khởi động). Máy chọn image khi tạo/approve và **kế thừa** NFS export từ row tương ứng (override per-máy vẫn giữ); máy phát hiện qua PXE lần đầu nhận image đánh dấu default. Quy tắc version: **3 phần** (`26.04.1`, `24.04.5`) = pin đúng point-release, tải đúng file ISO đó (không auto-latest — tránh lệch với NFS export); **2 phần** (`26.04`) = tự dò bản `.N` mới nhất. Thêm **point-release mới** của series đã hỗ trợ (vd `26.04.2`) = thêm row trong UI/API + NFS export mới, **không cần sửa code**; thêm **series mới** = 1 dòng trong `providers/ubuntu/ubuntu.v` `versions()`; thêm **OS khác** = implement `OSProvider` (`name/display_name/versions/supports_version/assets_ready/install_script/user_data/meta_data`) + register trong `server/app.v` → tự xuất hiện trong dropdown.
 - **Storage layout**: mặc định `direct` (ext4); `zfs` cũ có thêm late-commands ghi `/etc/modprobe.d/zfs.conf` (`zfs_arc_max=512MB`, `arc_min=128MB`) + `update-initramfs -u` — cần cho máy ít RAM. Field **Install disk** per-máy (drawer) nhận path `/dev/...` (vd `/dev/nvme0n1`, `/dev/disk/by-id/...`) → render thành `storage.layout.match.path`; để trống = subiquity tự chọn disk lớn nhất, nhập `auto` để reset về mặc định.
 - **Cmdline iPXE** giữ nguyên các điểm đã kiểm chứng: không đặt `initrd=` trên dòng kernel (xung đột UEFI EFI_LOAD_FILE2), `ramdisk_size=3500000`, `cloud-config-url=/dev/null`.
 - **Password OS**: lưu hash `$6$` (sha512-crypt, tương thích `/etc/shadow` và cloud-init); mật khẩu UI dùng bcrypt qua `crypto.bcrypt`; token phiên qua `veb.auth`.

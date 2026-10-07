@@ -123,8 +123,8 @@ fn validate_os_images(app &App, rows []store.OsImage) ![]store.OsImage {
 		os_name := r.os_name.trim_space()
 		p := app.provider_for(os_name) or { return error('unknown os "${r.os_name}"') }
 		version := r.version.trim_space()
-		if version !in p.versions() {
-			return error('os "${os_name}" has no version "${version}" (available: ${p.versions().join(', ')})')
+		if !p.supports_version(version) {
+			return error('os "${os_name}" has no version "${version}" (available: ${p.versions().join(', ')}, plus point releases of those series)')
 		}
 		key := '${os_name}/${version}'
 		if seen[key] {

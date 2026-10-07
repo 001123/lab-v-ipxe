@@ -111,22 +111,35 @@ fn (mut d ProgressDownloader) on_finish(_request &http.Request, _response &http.
 }
 
 // discover_latest_iso_url scrapes the releases directory for a version and
-// returns the newest ubuntu-<version>.x-live-server-amd64.iso.
+// returns the ISO to download: for a pinned point release (x.y.z) the exact
+// ubuntu-<version>-live-server-amd64.iso in releases.ubuntu.com/<version>/,
+// otherwise the newest .N of the series.
 fn discover_latest_iso_url(version string) !string {
 	base_url := 'https://releases.ubuntu.com/${version}/'
 	resp := http.get(base_url)!
 	if resp.status_code != 200 {
 		return error('listing ${base_url} returned HTTP ${resp.status_code}')
 	}
-	name := pick_latest_iso(resp.body, version) or {
-		return error('no ubuntu-${version}.x live-server ISO found on ${base_url}')
+	name := pick_iso_filename(resp.body, version) or {
+		return error('no ISO for "${version}" found on ${base_url}')
 	}
 	return base_url + name
 }
 
-// pick_latest_iso finds the highest ubuntu-<version>.N-live-server-amd64.iso
-// in an HTML directory listing (hrefs are split on '"').
-pub fn pick_latest_iso(html string, version string) ?string {
+// pick_iso_filename finds the ISO name for `version` in an HTML directory
+// listing (hrefs are split on '"'). A pinned version (x.y.z) matches only the
+// exact ubuntu-<version>-live-server-amd64.iso; a series (x.y) picks the
+// highest ubuntu-<version>.N-live-server-amd64.iso.
+pub fn pick_iso_filename(html string, version string) ?string {
+	if version.split('.').len == 3 {
+		exact := 'ubuntu-${version}${iso_name_suffix}'
+		for seg in html.split('"') {
+			if seg == exact {
+				return exact
+			}
+		}
+		return none
+	}
 	prefix := 'ubuntu-${version}.'
 	mut best := ''
 	mut best_n := 0

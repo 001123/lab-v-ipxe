@@ -121,7 +121,7 @@ fn test_full_api_flow() {
 		method: .put
 		url:    '${test_base}/api/settings'
 		header: h_json_auth(token)
-		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04","is_default":true}]}'
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04.5","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04","is_default":true}]}'
 	)!
 	assert res4e.status_code == 200
 	catalog := json2.decode[SettingsRes](res4e.body)!
@@ -134,7 +134,7 @@ fn test_full_api_flow() {
 		method: .put
 		url:    '${test_base}/api/settings'
 		header: h_json_auth(token)
-		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04"}]}'
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04.5","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04"}]}'
 	)!
 	assert res4f.status_code == 200
 	assert json2.decode[SettingsRes](res4f.body)!.os_images[0].is_default
@@ -158,23 +158,50 @@ fn test_full_api_flow() {
 		method: .put
 		url:    '${test_base}/api/settings'
 		header: h_json_auth(token)
-		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9"}]}'
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04.5","nfs_root":"10.0.0.9"}]}'
 	)!
 	assert res4i.status_code == 400
 	res4j := http.fetch(
 		method: .put
 		url:    '${test_base}/api/settings'
 		header: h_json_auth(token)
-		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9:/srv/nfs with space"}]}'
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04.5","nfs_root":"10.0.0.9:/srv/nfs with space"}]}'
 	)!
 	assert res4j.status_code == 400
 	res4k := http.fetch(
 		method: .put
 		url:    '${test_base}/api/settings'
 		header: h_json_auth(token)
-		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04"},{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.8:/srv/nfs/other"}]}'
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04.5","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04"},{"os_name":"ubuntu","version":"24.04.5","nfs_root":"10.0.0.8:/srv/nfs/other"}]}'
 	)!
 	assert res4k.status_code == 400
+
+	// a point release of a supported series is valid even when it is not listed
+	// in versions() (pinned release without a rebuild)
+	res4m := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"26.04.2","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-26.04.2","is_default":true}]}'
+	)!
+	assert res4m.status_code == 200
+	assert json2.decode[SettingsRes](res4m.body)!.os_images[0].version == '26.04.2'
+	// ...and an unsupported series is still rejected
+	res4m2 := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"26.05","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-26.05"}]}'
+	)!
+	assert res4m2.status_code == 400
+	// restore the catalog the rest of the test relies on
+	res4n := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04.5","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04","is_default":true}]}'
+	)!
+	assert res4n.status_code == 200
 
 	// an empty list keeps the current catalog
 	res4l := http.fetch(
@@ -292,7 +319,7 @@ fn test_full_api_flow() {
 	assert res11boot.body.contains('nfsroot=10.0.0.9:/srv/nfs/ubuntu-24.04')
 
 	// per-machine keys override the global ones in the generated user-data
-	res11b := http.fetch(url: '${test_base}/os/ubuntu/24.04/BC:24:11:00:24:99/user-data')!
+	res11b := http.fetch(url: '${test_base}/os/ubuntu/24.04.5/BC:24:11:00:24:99/user-data')!
 	assert res11b.status_code == 200
 	assert res11b.body.contains('test@host')
 	assert !res11b.body.contains('global@host')
@@ -306,7 +333,7 @@ fn test_full_api_flow() {
 	)!
 	assert res11c.status_code == 200
 	assert json2.decode[MachineDto](res11c.body)!.ssh_keys == ''
-	res11d := http.fetch(url: '${test_base}/os/ubuntu/24.04/BC:24:11:00:24:99/user-data')!
+	res11d := http.fetch(url: '${test_base}/os/ubuntu/24.04.5/BC:24:11:00:24:99/user-data')!
 	assert res11d.status_code == 200
 	assert res11d.body.contains('global@host')
 	assert !res11d.body.contains('test@host')
@@ -375,7 +402,7 @@ fn test_full_api_flow() {
 	auto_created := json2.decode[[]MachineDto](res18c.body)!.filter(it.mac == 'AA:BB:CC:00:11:22')
 	assert auto_created.len == 1
 	assert auto_created[0].os_name == 'ubuntu'
-	assert auto_created[0].os_version == '24.04'
+	assert auto_created[0].os_version == '24.04.5'
 	assert auto_created[0].nfs_root == ''
 
 	// assets fetch: all rows, a single catalog row, and validation
@@ -390,7 +417,7 @@ fn test_full_api_flow() {
 		method: .post
 		url:    '${test_base}/api/assets/fetch'
 		header: h_json_auth(token)
-		data:   '{"os_name":"ubuntu","version":"24.04"}'
+		data:   '{"os_name":"ubuntu","version":"24.04.5"}'
 	)!
 	assert res18e.status_code == 200
 	res18f := http.fetch(

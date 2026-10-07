@@ -2,8 +2,6 @@ module ubuntu
 
 import core
 
-pub const default_version = '24.04'
-
 pub struct Ubuntu {
 pub mut:
 	assets &AssetManager
@@ -23,10 +21,36 @@ pub fn (u &Ubuntu) display_name() string {
 	return 'Ubuntu'
 }
 
-// versions lists the supported releases, newest first. Adding a release (e.g.
-// '26.04') is a one-line change; assets are discovered per version.
+// versions lists the selectable releases, newest first. A full point release
+// (x.y.z) is pinned: assets come from exactly that ISO. A two-part series
+// (x.y) tracks the newest .N release. Adding a series is a one-line change;
+// point releases of an already-supported series need no code change at all.
 pub fn (u &Ubuntu) versions() []string {
-	return [default_version]
+	return ['26.04.1', '24.04.5']
+}
+
+// supports_version accepts every selectable version plus any other point
+// release (x.y.z) of an already-supported series, so a pinned release can be
+// added to the catalog without a rebuild.
+pub fn (u &Ubuntu) supports_version(version string) bool {
+	parts := version.split('.')
+	if parts.len == 3 {
+		return '${parts[0]}.${parts[1]}' in u.supported_series()
+	}
+	return version in u.versions()
+}
+
+fn (u &Ubuntu) supported_series() []string {
+	mut out := []string{}
+	for v in u.versions() {
+		parts := v.split('.')
+		if parts.len == 3 {
+			out << '${parts[0]}.${parts[1]}'
+		} else {
+			out << v
+		}
+	}
+	return out
 }
 
 pub fn (u &Ubuntu) assets_ready(req core.BootRequest) bool {

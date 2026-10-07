@@ -124,6 +124,14 @@ pub fn (mut app App) machines_create(mut ctx Context) veb.Result {
 	}
 	mut m := store.Machine{}
 	apply_payload(mut m, payload, true) or { return bad_request(mut ctx, err.msg()) }
+	// a create without an explicit image tracks the catalog default, like the
+	// PXE auto-create path
+	if payload.os_name.trim_space() == '' && payload.os_version.trim_space() == '' {
+		if img := app.st.default_os_image() {
+			m.os_name = img.os_name
+			m.os_version = img.version
+		}
+	}
 	app.validate_machine_image(m) or { return bad_request(mut ctx, err.msg()) }
 	if _ := app.st.machine_by_mac_key(m.mac_key) {
 		return conflict(mut ctx, 'machine with MAC ${m.mac} already exists')

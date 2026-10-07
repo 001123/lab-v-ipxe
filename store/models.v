@@ -32,7 +32,7 @@ pub mut:
 	storage_layout StorageLayout = .direct
 	storage_disk   string // installer disk match path, '' -> largest disk
 	os_name        string = 'ubuntu'
-	os_version     string = '24.04'
+	os_version     string = '26.04.1'
 	username       string = 'ubuntu'
 	password_hash  string
 	ssh_keys       string

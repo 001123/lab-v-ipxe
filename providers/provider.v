@@ -11,6 +11,10 @@ pub interface OSProvider {
 	name() string
 	display_name() string
 	versions() []string
+	// supports_version reports whether a version may be configured in the OS
+	// image catalog. It may accept more than versions() (e.g. pinned point
+	// releases of a supported series).
+	supports_version(version string) bool
 	// assets_ready reports whether kernel/rootfs assets are locally available.
 	assets_ready(req core.BootRequest) bool
 	// install_script returns the iPXE script that boots the installer.

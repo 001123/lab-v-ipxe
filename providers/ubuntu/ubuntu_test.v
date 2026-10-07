@@ -13,9 +13,9 @@ fn sample_req() core.BootRequest {
 		username:       'timi'
 		password_hash:  ''
 		ssh_keys:       'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKey timi@workstation\nssh-rsa AAAAB3Nza example2'
-		nfs_root:       '192.168.250.4:/srv/nfs/ubuntu-24.04'
+		nfs_root:       '192.168.250.4:/srv/nfs/ubuntu-24.04.5'
 		os_name:        'ubuntu'
-		os_version:     '24.04'
+		os_version:     '24.04.5'
 		arch:           'amd64'
 		storage_layout: .zfs
 		storage_disk:   ''
@@ -28,13 +28,13 @@ fn test_nfs_install_script() {
 	u := new(new_assets('/nonexistent-cache', '', '', false))
 	s := u.install_script(sample_req())!
 	assert s.starts_with('#!ipxe')
-	assert s.contains('kernel http://192.168.250.10:8080/assets/ubuntu/24.04/vmlinuz')
+	assert s.contains('kernel http://192.168.250.10:8080/assets/ubuntu/24.04.5/vmlinuz')
 	assert s.contains('root=/dev/ram0 ramdisk_size=3500000 boot=casper')
-	assert s.contains('netboot=nfs nfsroot=192.168.250.4:/srv/nfs/ubuntu-24.04')
+	assert s.contains('netboot=nfs nfsroot=192.168.250.4:/srv/nfs/ubuntu-24.04.5')
 	assert s.contains('ip=dhcp autoinstall')
-	assert s.contains('ds=nocloud-net;s=http://192.168.250.10:8080/os/ubuntu/24.04/BC:24:11:00:24:99/')
+	assert s.contains('ds=nocloud-net;s=http://192.168.250.10:8080/os/ubuntu/24.04.5/BC:24:11:00:24:99/')
 	assert s.contains('cloud-config-url=/dev/null')
-	assert s.contains('initrd http://192.168.250.10:8080/assets/ubuntu/24.04/initrd')
+	assert s.contains('initrd http://192.168.250.10:8080/assets/ubuntu/24.04.5/initrd')
 	assert s.ends_with('boot\n')
 	// the kernel line must not carry initrd=
 	kernel_lines := s.split_into_lines().filter(it.starts_with('kernel'))
@@ -112,13 +112,45 @@ fn test_assets_ready_and_path_for() {
 	assert am.path_for('24.04', 'vmlinuz') == none
 }
 
-fn test_pick_latest_iso_for_version() {
-	html := '<a href="ubuntu-24.04.2-live-server-amd64.iso">x</a>\n<a href="ubuntu-24.04.3-live-server-amd64.iso">y</a>\n<a href="ubuntu-24.04-live-server-amd64.iso">z</a>\n<a href="ubuntu-24.04.10-live-server-amd64.iso">w</a>\n<a href="ubuntu-24.04.10-live-server-amd64.iso.torrent">t</a>\n<a href="ubuntu-26.04.1-live-server-amd64.iso">u</a>'
-	got_2404 := pick_latest_iso(html, '24.04') or { '' }
+fn test_versions_newest_first_and_supports_point_releases() {
+	u := new(new_assets('/nonexistent-cache', '', '', false))
+	assert u.versions() == ['26.04.1', '24.04.5']
+	assert u.supports_version('26.04.1')
+	assert u.supports_version('24.04.5')
+	assert u.supports_version('26.04.2')
+	assert u.supports_version('24.04.6')
+	assert !u.supports_version('26.04')
+	assert !u.supports_version('24.04')
+	assert !u.supports_version('26.05')
+	assert !u.supports_version('99.99')
+	assert !u.supports_version('26.04.1.2')
+}
+
+fn test_nfs_install_script_pinned_version() {
+	u := new(new_assets('/nonexistent-cache', '', '', false))
+	mut req := sample_req()
+	req.os_version = '26.04.1'
+	req.nfs_root = '192.168.250.4:/srv/nfs/ubuntu-26.04.1'
+	s := u.install_script(req)!
+	assert s.contains('kernel http://192.168.250.10:8080/assets/ubuntu/26.04.1/vmlinuz')
+	assert s.contains('netboot=nfs nfsroot=192.168.250.4:/srv/nfs/ubuntu-26.04.1')
+	assert s.contains('initrd http://192.168.250.10:8080/assets/ubuntu/26.04.1/initrd')
+}
+
+fn test_pick_iso_filename() {
+	html := '<a href="ubuntu-24.04.2-live-server-amd64.iso">x</a>\n<a href="ubuntu-24.04.3-live-server-amd64.iso">y</a>\n<a href="ubuntu-24.04-live-server-amd64.iso">z</a>\n<a href="ubuntu-24.04.5-live-server-amd64.iso">p</a>\n<a href="ubuntu-24.04.10-live-server-amd64.iso">w</a>\n<a href="ubuntu-24.04.10-live-server-amd64.iso.torrent">t</a>\n<a href="ubuntu-26.04.1-live-server-amd64.iso">u</a>'
+	// series: newest .N wins
+	got_2404 := pick_iso_filename(html, '24.04') or { '' }
 	assert got_2404 == 'ubuntu-24.04.10-live-server-amd64.iso'
-	got_2604 := pick_latest_iso(html, '26.04') or { '' }
+	got_2604 := pick_iso_filename(html, '26.04') or { '' }
 	assert got_2604 == 'ubuntu-26.04.1-live-server-amd64.iso'
-	assert pick_latest_iso('nothing here', '24.04') == none
+	// pinned: exact file only, never a newer .N
+	pinned_2404 := pick_iso_filename(html, '24.04.5') or { '' }
+	assert pinned_2404 == 'ubuntu-24.04.5-live-server-amd64.iso'
+	pinned_2604 := pick_iso_filename(html, '26.04.1') or { '' }
+	assert pinned_2604 == 'ubuntu-26.04.1-live-server-amd64.iso'
+	assert pick_iso_filename(html, '26.04.2') == none
+	assert pick_iso_filename('nothing here', '24.04') == none
 }
 
 fn test_asset_status_is_per_version() {
