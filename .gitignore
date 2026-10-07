@@ -1,0 +1,23 @@
+# secrets
+secret/
+human/
+
+# build artifacts
+bin/
+tmp/
+tmp-prod/
+/lab-v-ipxe
+
+# frontend
+web/node_modules/
+web/dist/*
+!web/dist/index.html
+
+# runtime data
+*.db
+*.db-wal
+*.db-shm
+*.log
+
+# os noise
+.DS_Store
