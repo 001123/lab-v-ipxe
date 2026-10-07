@@ -4,8 +4,13 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 
+import { APP_VERSION } from "@/lib/version";
+
 export const metadata: Metadata = {
-  title: "iPXE ZTP",
+  title: {
+    default: `iPXE ZTP v${APP_VERSION}`,
+    template: `%s · iPXE ZTP v${APP_VERSION}`,
+  },
   description: "Automated bare-metal zero-touch provisioning server.",
   icons: {
     icon: [
