@@ -56,7 +56,7 @@ pub:
 
 // MachinePayload is accepted by create/update/approve. Empty strings mean
 // "keep the default / keep the current value" (password: keep current hash);
-// ssh_keys 'auto' clears the per-machine keys (machine inherits the global ones).
+// ssh_keys / nfs_root 'auto' clears the per-machine override (machine inherits the global/image ones).
 pub struct MachinePayload {
 pub:
 	mac            string

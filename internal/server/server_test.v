@@ -402,6 +402,16 @@ fn test_full_api_flow() {
 	assert res11d.body.contains('global@host')
 	assert !res11d.body.contains('test@host')
 
+	// 'auto' clears the per-machine nfs_root override: machine inherits the OS image nfs_root
+	res11c_nfs := http.fetch(
+		method: .put
+		url:    '${test_base}/api/machines/${created.id}'
+		header: h_json_auth(token)
+		data:   '{"nfs_root":"auto"}'
+	)!
+	assert res11c_nfs.status_code == 200
+	assert json2.decode[MachineDto](res11c_nfs.body)!.nfs_root == ''
+
 	// an empty payload keeps the cleared value
 	res11e := http.fetch(
 		method: .put

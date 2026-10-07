@@ -13,6 +13,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { ThemeSegmentedToggle, ThemeToggle } from '@/components/theme-toggle'
+import { VersionBadge } from '@/components/version-badge'
 import { useAuth } from '@/hooks/use-auth'
 import { useMachines } from '@/hooks/use-machines'
 import { formatRam, useSystemInfo } from '@/hooks/use-system-info'
@@ -88,6 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <NetworkIcon className="size-4" />
             </div>
             <span className="font-semibold text-sm sm:text-base">iPXE ZTP</span>
+            <VersionBadge />
           </Link>
         </div>
 
@@ -192,7 +194,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <NetworkIcon className="size-5" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-semibold text-sm leading-tight">iPXE ZTP</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm leading-tight">iPXE ZTP</span>
+                    <VersionBadge />
+                  </div>
                   <span className="text-[11px] text-muted-foreground">Provisioning server</span>
                 </div>
               </div>
@@ -262,7 +267,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Mobile Drawer Footer */}
-            <div className="mt-auto border-t p-4 flex flex-col gap-3 bg-muted/20">
+            <div className="mt-auto border-t p-4 pb-6 sm:pb-4 flex flex-col gap-3 bg-muted/20">
               <div className="space-y-1">
                 <div className="text-[11px] font-medium text-muted-foreground px-1">Theme</div>
                 <ThemeSegmentedToggle />

@@ -72,7 +72,9 @@ fn apply_payload(mut m store.Machine, p MachinePayload, is_create bool) ! {
 		m.ssh_keys = ssh_keys_from(k) or { return err }
 	}
 	r := p.nfs_root.trim_space()
-	if r != '' {
+	if r == 'auto' {
+		m.nfs_root = ''
+	} else if r != '' {
 		m.nfs_root = validate_nfs_root(r) or { return err }
 	}
 	n := p.notes.trim_space()
