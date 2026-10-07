@@ -39,6 +39,9 @@ pub fn (s &Store) migrate() ! {
 	sql s.db {
 		create table Machine
 	}!
+	if s.db.q_int("select count(*) from pragma_table_info('machines') where name = 'storage_disk'")! == 0 {
+		s.db.exec("alter table machines add column storage_disk TEXT NOT NULL DEFAULT ''")!
+	}
 	sql s.db {
 		create table User
 	}!

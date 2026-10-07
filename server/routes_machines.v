@@ -35,6 +35,14 @@ fn server_error(mut ctx Context, msg string) veb.Result {
 	})
 }
 
+// validate_machine_image rejects machines pinned to an OS image that is not
+// in the settings catalog: such a machine would never be able to boot.
+fn (app &App) validate_machine_image(m store.Machine) ! {
+	_ := app.st.os_image_for(m.os_name, m.os_version) or {
+		return error('os image "${m.os_name} ${m.os_version}" is not in the catalog; add it under Settings > OS images')
+	}
+}
+
 // apply_payload merges a payload into a machine: provided (non-empty) fields
 // replace the current values, empty fields keep them. mac is required on create.
 fn apply_payload(mut m store.Machine, p MachinePayload, is_create bool) ! {
@@ -58,7 +66,9 @@ fn apply_payload(mut m store.Machine, p MachinePayload, is_create bool) ! {
 			sha512crypt.default_rounds)
 	}
 	k := p.ssh_keys.trim_space()
-	if k != '' {
+	if k == 'auto' {
+		m.ssh_keys = ''
+	} else if k != '' {
 		m.ssh_keys = k
 	}
 	r := p.nfs_root.trim_space()
@@ -87,6 +97,9 @@ fn apply_payload(mut m store.Machine, p MachinePayload, is_create bool) ! {
 			return error('invalid storage_layout "${p.storage_layout}" (expected zfs, direct or lvm)')
 		}
 	}
+	if p.storage_disk.trim_space() != '' {
+		m.storage_disk = storage_disk_from(p.storage_disk) or { return err }
+	}
 }
 
 @['/api/machines'; get]
@@ -111,6 +124,7 @@ pub fn (mut app App) machines_create(mut ctx Context) veb.Result {
 	}
 	mut m := store.Machine{}
 	apply_payload(mut m, payload, true) or { return bad_request(mut ctx, err.msg()) }
+	app.validate_machine_image(m) or { return bad_request(mut ctx, err.msg()) }
 	if _ := app.st.machine_by_mac_key(m.mac_key) {
 		return conflict(mut ctx, 'machine with MAC ${m.mac} already exists')
 	}
@@ -131,6 +145,7 @@ pub fn (mut app App) machines_update(mut ctx Context, id string) veb.Result {
 	}
 	mut m := app.st.machine_by_id(id.int()) or { return not_found(mut ctx, 'machine not found') }
 	apply_payload(mut m, payload, false) or { return bad_request(mut ctx, err.msg()) }
+	app.validate_machine_image(m) or { return bad_request(mut ctx, err.msg()) }
 	if existing := app.st.machine_by_mac_key(m.mac_key) {
 		if existing.id != m.id {
 			return conflict(mut ctx, 'machine with MAC ${m.mac} already exists')
@@ -159,6 +174,7 @@ pub fn (mut app App) machines_approve(mut ctx Context, id string) veb.Result {
 	if m.hostname.trim_space() == '' {
 		return bad_request(mut ctx, 'hostname is required to approve a machine')
 	}
+	app.validate_machine_image(m) or { return bad_request(mut ctx, err.msg()) }
 	m.status = .approved
 	m.approved_at = store.now_unix()
 	app.st.machine_save(mut m) or { return server_error(mut ctx, err.msg()) }

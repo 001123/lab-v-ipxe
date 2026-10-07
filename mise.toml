@@ -1,0 +1,145 @@
+# mise tasks for lab-v-ipxe.
+# `mise run dev` starts the backend (V/veb, :8080) and the frontend dev server
+# (Next.js, :3000, proxying /api to the backend) together in one terminal.
+# A dev stack left over from a previous run of this repo is stopped first.
+# First run in a fresh clone: `mise trust` (mise asks before loading this file).
+
+[tasks.dev]
+description = "Run backend (:8080) and frontend (:3000) dev servers together"
+run = '''
+set -eu
+
+BE_PID=''
+FE_PID=''
+BE_PORT="${LAB_V_IPXE_PORT:-8080}"
+ROOT="$(pwd)"
+
+printf '\033[1;36m'
+cat <<'BANNER'
+ _       _    ___      __   __      ___    ___   __  __   ___
+| |     /_\  | _ )     \ \ / /     |_ _|  | _ \  \ \/ /  | __|
+| |__   / _ \  | _ \   _  \ V /    _  | |   |  _/   >  <   | _|
+|____| /_/ \_\ |___/       \_/       |___|  |_|    /_/\_\  |___|
+BANNER
+printf '\033[0m'
+cat <<INFO
+  iPXE ZTP provisioning server - dev mode
+
+  backend  : http://localhost:${BE_PORT}    v -g run .  (data dir ./tmp, compiles on first run)
+  frontend : http://localhost:3000    next dev    (starts after the backend is ready)
+  login    : admin@ipxe.local / admin@pwd
+  restart  : previous dev processes of this repo are stopped automatically
+  stop     : Ctrl+C (stops both servers)
+INFO
+echo
+
+if [ "$BE_PORT" != "8080" ]; then
+  echo "note: backend port is ${BE_PORT}; the frontend proxy still targets :8080"
+  echo "      update PROXY in web/next.config.ts to match, or unset LAB_V_IPXE_PORT"
+  echo
+fi
+
+kill_tree() {
+  [ -n "$1" ] || return 0
+  for child in $(pgrep -P "$1" 2>/dev/null || true); do
+    kill_tree "$child"
+  done
+  kill "$1" 2>/dev/null || true
+}
+
+# kill_previous stops whatever is still running from an earlier run of this
+# repo: listeners on ${BE_PORT}/3000 whose cwd is inside the repo, plus the
+# repo's own dev processes (dev binary, next dev, turbopack workers) that may
+# no longer hold a port. Foreign apps are left alone.
+kill_previous() {
+  echo "==> stopping previous dev processes of this repo, if any"
+  targets=''
+  for port in "${BE_PORT}" 3000; do
+    for pid in $(lsof -nP -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null || true); do
+      cwd="$(lsof -a -p "${pid}" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)"
+      case "${cwd}" in
+        "${ROOT}"|"${ROOT}"/*)
+          echo "    :${port} -> pid ${pid}"
+          targets="${targets} ${pid}"
+          ;;
+        *)
+          echo "    note: :${port} is held by another app (pid ${pid}, cwd ${cwd:-unknown}); leaving it alone"
+          ;;
+      esac
+    done
+  done
+  for pattern in "${ROOT}/tmp/lab-v-ipxe-dev" "${ROOT}/web/node_modules" "${ROOT}/web/.next"; do
+    for pid in $(pgrep -f "${pattern}" 2>/dev/null || true); do
+      if [ "${pid}" != "$$" ] && [ "${pid}" != "${PPID}" ]; then
+        targets="${targets} ${pid}"
+      fi
+    done
+  done
+  if [ -z "${targets}" ]; then
+    echo "    nothing to stop"
+    return 0
+  fi
+  kill ${targets} 2>/dev/null || true
+  i=0
+  while [ "${i}" -lt 5 ]; do
+    alive=''
+    for pid in ${targets}; do
+      if kill -0 "${pid}" 2>/dev/null; then
+        alive="${alive} ${pid}"
+      fi
+    done
+    if [ -z "${alive}" ]; then
+      break
+    fi
+    sleep 1
+    i=$((i + 1))
+  done
+  if [ -n "${alive}" ]; then
+    echo "    force-killing:${alive}"
+    kill -9 ${alive} 2>/dev/null || true
+    sleep 1
+  fi
+  echo "    previous dev processes stopped"
+}
+
+cleanup() {
+  trap - EXIT INT TERM
+  echo
+  echo "==> stopping backend and frontend"
+  kill_tree "$FE_PID"
+  kill_tree "$BE_PID"
+}
+trap cleanup EXIT INT TERM
+
+kill_previous
+
+utils/dev.sh & BE_PID=$!
+echo "==> starting backend on :${BE_PORT} (building; this can take a while on first run)"
+
+i=0
+while [ "$i" -lt 180 ]; do
+  if ! kill -0 "$BE_PID" 2>/dev/null; then
+    echo "!! backend exited before becoming ready"
+    exit 1
+  fi
+  if curl -fsS -m 2 "http://127.0.0.1:${BE_PORT}/healthz" >/dev/null 2>&1; then
+    echo "==> backend ready after ${i}s"
+    break
+  fi
+  sleep 1
+  i=$((i + 1))
+done
+if [ "$i" -ge 180 ]; then
+  echo "!! backend not ready after 180s; giving up"
+  exit 1
+fi
+
+echo "==> starting frontend on :3000"
+(cd web && npm run dev) & FE_PID=$!
+echo "==> backend pid ${BE_PID}, frontend pid ${FE_PID}"
+
+while kill -0 "$BE_PID" 2>/dev/null && kill -0 "$FE_PID" 2>/dev/null; do
+  sleep 1
+done
+echo "==> one dev server exited; shutting down the other"
+'''

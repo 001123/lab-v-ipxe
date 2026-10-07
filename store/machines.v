@@ -60,7 +60,7 @@ pub fn (s &Store) machine_save(mut m Machine) ! {
 	} else {
 		m.updated_at = now
 		sql s.db {
-			update Machine set mac = m.mac, mac_key = m.mac_key, hostname = m.hostname, status = m.status, boot_mode = m.boot_mode, storage_layout = m.storage_layout, os_name = m.os_name, os_version = m.os_version, username = m.username, password_hash = m.password_hash, ssh_keys = m.ssh_keys, nfs_root = m.nfs_root, notes = m.notes, auto_created = m.auto_created, install_count = m.install_count, approved_at = m.approved_at, installed_at = m.installed_at, last_seen_at = m.last_seen_at, updated_at = m.updated_at where id == m.id
+			update Machine set mac = m.mac, mac_key = m.mac_key, hostname = m.hostname, status = m.status, boot_mode = m.boot_mode, storage_layout = m.storage_layout, storage_disk = m.storage_disk, os_name = m.os_name, os_version = m.os_version, username = m.username, password_hash = m.password_hash, ssh_keys = m.ssh_keys, nfs_root = m.nfs_root, notes = m.notes, auto_created = m.auto_created, install_count = m.install_count, approved_at = m.approved_at, installed_at = m.installed_at, last_seen_at = m.last_seen_at, updated_at = m.updated_at where id == m.id
 		}!
 	}
 }

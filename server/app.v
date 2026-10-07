@@ -23,9 +23,17 @@ pub mut:
 	auth         auth.Auth[sqlite.DB]
 	assets       &ubuntu.AssetManager
 	os_providers map[string]providers.OSProvider
+	// embedded SPA, materialized once at startup (see routes_spa.v)
+	spa_files   map[string]string
+	spa_enabled bool
 }
 
 pub fn new_app(cfg config.Config, st &store.Store) &App {
+	// migrate legacy settings (nfs_root_default/ubuntu_version) into the
+	// os_images catalog once, when the catalog is still empty
+	st.seed_os_images(config.default_nfs_root, config.default_ubuntu_version) or {
+		eprintln('[app] os image catalog seed failed: ${err.msg()}')
+	}
 	assets := ubuntu.new_assets(dirs.assets_dir(cfg.data_dir), cfg.ubuntu_assets_dir, cfg.ubuntu_iso,
 		cfg.keep_iso)
 	mut app := &App{
@@ -37,6 +45,7 @@ pub fn new_app(cfg config.Config, st &store.Store) &App {
 		}
 	}
 	app.auth = auth.new(st.db)
+	app.load_spa()
 	app.Middleware.use(handler: log_requests)
 	app.Middleware.route_use('/api/:path...',
 		handler: fn [app] (mut ctx Context) bool {
@@ -50,8 +59,12 @@ pub fn new_app(cfg config.Config, st &store.Store) &App {
 
 // start_assets_fetch kicks off asset preparation in the background when a
 // machine wants to install but the kernel/initrd are not available yet.
-fn (mut app App) start_assets_fetch() {
-	app.assets.ensure_assets(app.ubuntu_version())
+// Only ubuntu has a file-backed asset pipeline today; route this through
+// OSProvider once a second file-boot provider exists.
+fn (mut app App) start_assets_fetch(os_name string, version string) {
+	if os_name == 'ubuntu' {
+		app.assets.ensure_assets(version)
+	}
 }
 
 struct HealthRes {

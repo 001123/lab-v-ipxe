@@ -4,9 +4,12 @@ import core
 
 // OSProvider renders boot configuration for one operating system family.
 // Future OSes (talos, suse, rocky, ...) implement this interface and register
-// themselves in the server's provider map.
+// themselves in the server's provider map. Implementers must provide
+// name/display_name/versions; versions() is ordered newest-first and drives
+// the version dropdown in the UI.
 pub interface OSProvider {
 	name() string
+	display_name() string
 	versions() []string
 	// assets_ready reports whether kernel/rootfs assets are locally available.
 	assets_ready(req core.BootRequest) bool

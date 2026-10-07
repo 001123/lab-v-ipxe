@@ -18,6 +18,7 @@ pub mut:
 	os_version     string
 	arch           string
 	storage_layout store.StorageLayout
+	storage_disk   string // installer disk match path, '' -> largest disk
 	install_count  int
 	boot_mode      store.BootMode
 }

@@ -24,7 +24,8 @@ pub mut:
 
 // AssetManager owns the kernel/initrd cache for installer assets. Assets come
 // from (in priority order): the cache dir, an override dir, a local ISO, or a
-// one-time download from releases.ubuntu.com (see assets_fetch.v).
+// one-time download from releases.ubuntu.com (see assets_fetch.v). A status is
+// tracked per OS version.
 @[heap]
 pub struct AssetManager {
 pub mut:
@@ -33,7 +34,7 @@ pub mut:
 	local_iso    string // LAB_V_IPXE_UBUNTU_ISO
 	keep_iso     bool
 	mu           sync.Mutex
-	status       AssetStatus
+	statuses     map[string]AssetStatus // key: version
 }
 
 pub fn new_assets(cache_dir string, override_dir string, local_iso string, keep_iso bool) &AssetManager {
@@ -42,6 +43,7 @@ pub fn new_assets(cache_dir string, override_dir string, local_iso string, keep_
 		override_dir: override_dir
 		local_iso:    local_iso
 		keep_iso:     keep_iso
+		statuses:     map[string]AssetStatus{}
 	}
 }
 
@@ -69,12 +71,12 @@ pub fn (am &AssetManager) ready(version string) bool {
 	return am.path_for(version, 'vmlinuz') != none && am.path_for(version, 'initrd') != none
 }
 
-pub fn (am &AssetManager) status_snapshot() AssetStatus {
+pub fn (am &AssetManager) status_snapshot(version string) AssetStatus {
 	am.mu.lock()
 	defer {
 		am.mu.unlock()
 	}
-	return am.status
+	return am.statuses[version] or { AssetStatus{ version: version } }
 }
 
 fn (mut am AssetManager) set_status(phase AssetPhase, version string, message string) {
@@ -82,30 +84,32 @@ fn (mut am AssetManager) set_status(phase AssetPhase, version string, message st
 	defer {
 		am.mu.unlock()
 	}
-	am.status.phase = phase
-	am.status.version = version
-	am.status.message = message
+	mut st := am.statuses[version] or { AssetStatus{ version: version } }
+	st.phase = phase
+	st.message = message
 	if phase == .ready {
-		am.status.percent = 100
+		st.percent = 100
 	}
+	am.statuses[version] = st
 }
 
-fn (mut am AssetManager) set_progress(bytes_done i64, bytes_total i64) {
+fn (mut am AssetManager) set_progress(version string, bytes_done i64, bytes_total i64) {
 	am.mu.lock()
 	defer {
 		am.mu.unlock()
 	}
-	am.status.bytes_done = bytes_done
-	am.status.bytes_total = bytes_total
-	am.status.percent = if bytes_total > 0 {
+	mut st := am.statuses[version] or { AssetStatus{ version: version } }
+	st.bytes_done = bytes_done
+	st.bytes_total = bytes_total
+	st.percent = if bytes_total > 0 {
 		int(bytes_done * 100 / bytes_total)
 	} else {
 		0
 	}
+	am.statuses[version] = st
 }
 
-fn (mut am AssetManager) fail(message string) {
-	version := am.status_snapshot().version
+fn (mut am AssetManager) fail(version string, message string) {
 	am.set_status(.failed, version, message)
 	eprintln('[assets] failed: ${message}')
 }

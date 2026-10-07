@@ -19,6 +19,12 @@ pub fn (u &Ubuntu) name() string {
 	return 'ubuntu'
 }
 
+pub fn (u &Ubuntu) display_name() string {
+	return 'Ubuntu'
+}
+
+// versions lists the supported releases, newest first. Adding a release (e.g.
+// '26.04') is a one-line change; assets are discovered per version.
 pub fn (u &Ubuntu) versions() []string {
 	return [default_version]
 }

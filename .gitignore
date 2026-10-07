@@ -10,8 +10,8 @@ tmp-prod/
 
 # frontend
 web/node_modules/
-web/dist/*
-!web/dist/index.html
+web/.next/
+web/out/
 
 # runtime data
 *.db

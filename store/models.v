@@ -29,10 +29,11 @@ pub mut:
 	hostname       string
 	status         MachineStatus = .pending
 	boot_mode      BootMode      = .nfs
-	storage_layout StorageLayout = .zfs
-	os_name        string        = 'ubuntu'
-	os_version     string        = '24.04'
-	username       string        = 'ubuntu'
+	storage_layout StorageLayout = .direct
+	storage_disk   string // installer disk match path, '' -> largest disk
+	os_name        string = 'ubuntu'
+	os_version     string = '24.04'
+	username       string = 'ubuntu'
 	password_hash  string
 	ssh_keys       string
 	nfs_root       string

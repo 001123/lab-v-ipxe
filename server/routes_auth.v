@@ -24,7 +24,7 @@ pub fn (mut app App) login(mut ctx Context) veb.Result {
 			message: 'invalid credentials'
 		})
 	}
-	token := app.auth.add_token(user.id) or {
+	token := app.auth_add_token(user.id) or {
 		ctx.res.set_status(.internal_server_error)
 		return ctx.json(MessageRes{
 			message: 'could not create session token'

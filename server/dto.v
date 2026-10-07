@@ -37,6 +37,7 @@ pub:
 	status         string
 	boot_mode      string
 	storage_layout string
+	storage_disk   string
 	os_name        string
 	os_version     string
 	username       string
@@ -54,7 +55,8 @@ pub:
 }
 
 // MachinePayload is accepted by create/update/approve. Empty strings mean
-// "keep the default / keep the current value" (password: keep current hash).
+// "keep the default / keep the current value" (password: keep current hash);
+// ssh_keys 'auto' clears the per-machine keys (machine inherits the global ones).
 pub struct MachinePayload {
 pub:
 	mac            string
@@ -68,6 +70,7 @@ pub:
 	os_version     string
 	boot_mode      string
 	storage_layout string
+	storage_disk   string
 }
 
 fn machine_to_dto(m store.Machine) MachineDto {
@@ -78,6 +81,7 @@ fn machine_to_dto(m store.Machine) MachineDto {
 		status:         m.status.str()
 		boot_mode:      m.boot_mode.str()
 		storage_layout: m.storage_layout.str()
+		storage_disk:   m.storage_disk
 		os_name:        m.os_name
 		os_version:     m.os_version
 		username:       m.username
@@ -120,4 +124,24 @@ fn storage_layout_from(s string) ?store.StorageLayout {
 		'lvm' { return .lvm }
 		else { return none }
 	}
+}
+
+// storage_disk_from validates an installer disk match path (/dev/... form,
+// e.g. /dev/nvme0n1 or /dev/disk/by-id/...). '' or 'auto' -> no match
+// (subiquity picks the largest disk).
+fn storage_disk_from(s string) !string {
+	v := s.trim_space()
+	if v == '' || v == 'auto' {
+		return ''
+	}
+	if !v.starts_with('/dev/') {
+		return error('invalid storage_disk "${s}" (expected a /dev/... path or "auto")')
+	}
+	for c in v {
+		if !(c >= `a` && c <= `z`) && !(c >= `A` && c <= `Z`) && !(c >= `0` && c <= `9`)
+			&& c !in [`/`, `_`, `-`, `.`, `:`, `+`] {
+			return error('invalid storage_disk "${s}" (expected a /dev/... path or "auto")')
+		}
+	}
+	return v
 }

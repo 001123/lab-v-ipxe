@@ -18,6 +18,7 @@ fn sample_req() core.BootRequest {
 		os_version:     '24.04'
 		arch:           'amd64'
 		storage_layout: .zfs
+		storage_disk:   ''
 		install_count:  0
 		boot_mode:      .nfs
 	}
@@ -81,6 +82,16 @@ fn test_user_data_custom_password_direct_layout_no_keys() {
 	assert !ud.contains('authorized-keys')
 }
 
+fn test_user_data_storage_disk_match() {
+	// no disk selected -> no match block (installer picks the largest disk)
+	assert !render_user_data(sample_req()).contains('match:')
+	mut req := sample_req()
+	req.storage_disk = '/dev/nvme1n1'
+	ud := render_user_data(req)
+	assert ud.contains('      match:')
+	assert ud.contains("        path: '/dev/nvme1n1'")
+}
+
 fn test_meta_data() {
 	md := render_meta_data(sample_req())
 	assert md.contains('instance-id: i-bc2411002499-0')
@@ -101,11 +112,25 @@ fn test_assets_ready_and_path_for() {
 	assert am.path_for('24.04', 'vmlinuz') == none
 }
 
-fn test_pick_latest_noble_iso() {
-	html := '<a href="ubuntu-24.04.2-live-server-amd64.iso">x</a>\n<a href="ubuntu-24.04.3-live-server-amd64.iso">y</a>\n<a href="ubuntu-24.04-live-server-amd64.iso">z</a>\n<a href="ubuntu-24.04.10-live-server-amd64.iso">w</a>\n<a href="ubuntu-24.04.10-live-server-amd64.iso.torrent">t</a>'
-	got := pick_latest_noble_iso(html) or { '' }
-	assert got == 'ubuntu-24.04.10-live-server-amd64.iso'
-	assert pick_latest_noble_iso('nothing here') == none
+fn test_pick_latest_iso_for_version() {
+	html := '<a href="ubuntu-24.04.2-live-server-amd64.iso">x</a>\n<a href="ubuntu-24.04.3-live-server-amd64.iso">y</a>\n<a href="ubuntu-24.04-live-server-amd64.iso">z</a>\n<a href="ubuntu-24.04.10-live-server-amd64.iso">w</a>\n<a href="ubuntu-24.04.10-live-server-amd64.iso.torrent">t</a>\n<a href="ubuntu-26.04.1-live-server-amd64.iso">u</a>'
+	got_2404 := pick_latest_iso(html, '24.04') or { '' }
+	assert got_2404 == 'ubuntu-24.04.10-live-server-amd64.iso'
+	got_2604 := pick_latest_iso(html, '26.04') or { '' }
+	assert got_2604 == 'ubuntu-26.04.1-live-server-amd64.iso'
+	assert pick_latest_iso('nothing here', '24.04') == none
+}
+
+fn test_asset_status_is_per_version() {
+	am := new_assets('/nonexistent-cache', '', '', false)
+	am.set_status(.downloading, '26.04', 'downloading x')
+	assert am.status_snapshot('26.04').phase == .downloading
+	assert am.status_snapshot('26.04').version == '26.04'
+	assert am.status_snapshot('24.04').phase == .idle
+	assert am.status_snapshot('24.04').version == '24.04'
+	am.set_progress('26.04', 50, 100)
+	assert am.status_snapshot('26.04').percent == 50
+	assert am.status_snapshot('24.04').percent == 0
 }
 
 fn test_ensure_assets_ready_via_override() {
@@ -119,7 +144,7 @@ fn test_ensure_assets_ready_via_override() {
 	am := new_assets(os.join_path(tmp, 'cache'), tmp, '', false)
 	assert am.ready('24.04')
 	am.ensure_assets('24.04')
-	assert am.status_snapshot().phase == .ready
+	assert am.status_snapshot('24.04').phase == .ready
 }
 
 fn test_extractor_detection_lists_at_least_one_on_dev_machine() {

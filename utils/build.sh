@@ -4,7 +4,7 @@
 #
 # Usage:
 #   utils/build.sh                 # frontend + darwin-arm64 + linux-amd64
-#   utils/build.sh --skip-frontend # reuse the current web/dist
+#   utils/build.sh --skip-frontend # reuse the current web/out
 #   utils/build.sh --host-only     # only the host binary
 #   utils/build.sh --linux-only    # only the linux-amd64 cross binary
 set -euo pipefail
@@ -25,7 +25,16 @@ done
 
 echo "==> preflight"
 v version | head -1
-VBIN_DIR="$(cd "$(dirname "$(command -v v)")" && pwd -P)"
+V_BIN="$(command -v v)"
+# resolve symlinks (e.g. mise/brew shims); macOS readlink has no -f
+while [ -L "$V_BIN" ]; do
+  target="$(readlink "$V_BIN")"
+  case "$target" in
+    /*) V_BIN="$target" ;;
+    *) V_BIN="$(dirname "$V_BIN")/$target" ;;
+  esac
+done
+VBIN_DIR="$(cd "$(dirname "$V_BIN")" && pwd -P)"
 if [[ -d "${VBIN_DIR}/thirdparty" ]]; then
   VROOT="${VBIN_DIR}"
 elif [[ -d "${VBIN_DIR}/../thirdparty" ]]; then

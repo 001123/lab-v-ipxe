@@ -2,10 +2,14 @@ module store
 
 import db.sqlite
 
+// setting_nfs_root and setting_ubuntu_version are legacy keys: only read once
+// by seed_os_images to migrate into the os_images catalog, then deleted.
 pub const setting_nfs_root = 'nfs_root_default'
 pub const setting_ubuntu_version = 'ubuntu_version'
+pub const setting_os_images = 'os_images'
 pub const setting_base_url = 'base_url_override'
 pub const setting_ubuntu_iso = 'ubuntu_iso_override'
+pub const setting_ssh_keys = 'ssh_keys_default'
 
 pub fn (s &Store) setting(key string) ?string {
 	s.mu.lock()
@@ -32,6 +36,14 @@ pub fn (s &Store) set_setting(key string, value string) ! {
 
 pub fn (s &Store) setting_or(key string, fallback string) string {
 	return s.setting(key) or { fallback }
+}
+
+pub fn (s &Store) delete_setting(key string) ! {
+	s.mu.lock()
+	defer {
+		s.mu.unlock()
+	}
+	_ := s.db.exec_param('delete from settings where key = ?', key)!
 }
 
 // delete_token removes a single session token by value (logout).

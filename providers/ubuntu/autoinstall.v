@@ -42,6 +42,10 @@ pub fn render_user_data(req core.BootRequest) string {
 	lines << '  storage:'
 	lines << '    layout:'
 	lines << '      name: ${req.storage_layout.str()}'
+	if req.storage_disk != '' {
+		lines << '      match:'
+		lines << "        path: '${req.storage_disk}'"
+	}
 	lines << '  packages:'
 	lines << '    - qemu-guest-agent'
 	lines << '    - curl'

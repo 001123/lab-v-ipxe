@@ -4,15 +4,13 @@ import net.http
 import os
 import strconv
 
-const releases_noble_url = 'https://releases.ubuntu.com/noble/'
-const iso_name_prefix = 'ubuntu-24.04.'
 const iso_name_suffix = '-live-server-amd64.iso'
 
 // refresh_status marks the manager ready when the files are already present
 // (e.g. after a restart, when the in-memory status was reset). It never
 // triggers a fetch.
 pub fn (mut am AssetManager) refresh_status(version string) {
-	if am.status_snapshot().phase == .idle && am.ready(version) {
+	if am.status_snapshot(version).phase == .idle && am.ready(version) {
 		am.set_status(.ready, version, 'assets available')
 	}
 }
@@ -21,14 +19,12 @@ pub fn (mut am AssetManager) refresh_status(version string) {
 // `version` are not available yet. Safe to call on every boot request.
 pub fn (mut am AssetManager) ensure_assets(version string) {
 	if am.ready(version) {
-		st := am.status_snapshot()
-		if st.phase != .ready {
+		if am.status_snapshot(version).phase != .ready {
 			am.set_status(.ready, version, 'assets available')
 		}
 		return
 	}
-	st := am.status_snapshot()
-	if st.phase in [.downloading, .extracting] && st.version == version {
+	if am.status_snapshot(version).phase in [.downloading, .extracting] {
 		return
 	}
 	spawn am.fetch_worker(version)
@@ -37,37 +33,38 @@ pub fn (mut am AssetManager) ensure_assets(version string) {
 fn (mut am AssetManager) fetch_worker(version string) {
 	dest := am.version_dir(version)
 	os.mkdir_all(dest) or {
-		am.fail('cannot create ${dest}: ${err.msg()}')
+		am.fail(version, 'cannot create ${dest}: ${err.msg()}')
 		return
 	}
 	// 1. local ISO (recommended when it is the same ISO the NFS rootfs mounts)
 	if am.local_iso != '' {
 		am.set_status(.extracting, version, 'extracting kernel/initrd from ${am.local_iso}')
 		extract_from_iso(am.local_iso, dest) or {
-			am.fail(err.msg())
+			am.fail(version, err.msg())
 			return
 		}
 		am.finish_ok(version, 'iso:${am.local_iso}')
 		return
 	}
-	// 2. download the current 24.04.x ISO from releases.ubuntu.com once
-	url := discover_latest_iso_url() or {
-		am.fail('cannot find an ISO to download: ${err.msg()}')
+	// 2. download the latest ${version}.x ISO from releases.ubuntu.com once
+	url := discover_latest_iso_url(version) or {
+		am.fail(version, 'cannot find an ISO to download: ${err.msg()}')
 		return
 	}
 	iso_path := os.join_path(dest, 'ubuntu-${version}-download.iso')
 	am.set_status(.downloading, version, 'downloading ${url}')
 	http.download_file_with_progress(url, iso_path,
 		downloader: &ProgressDownloader{
-			am: am
+			am:      am
+			version: version
 		}
 	) or {
-		am.fail('download failed: ${err.msg()}')
+		am.fail(version, 'download failed: ${err.msg()}')
 		return
 	}
 	am.set_status(.extracting, version, 'extracting kernel/initrd from the downloaded ISO')
 	extract_from_iso(iso_path, dest) or {
-		am.fail(err.msg())
+		am.fail(version, err.msg())
 		return
 	}
 	if am.keep_iso {
@@ -80,11 +77,12 @@ fn (mut am AssetManager) fetch_worker(version string) {
 
 fn (mut am AssetManager) finish_ok(version string, source string) {
 	am.mu.lock()
-	am.status.phase = .ready
-	am.status.version = version
-	am.status.source = source
-	am.status.message = 'assets ready (${source})'
-	am.status.percent = 100
+	mut st := am.statuses[version] or { AssetStatus{ version: version } }
+	st.phase = .ready
+	st.source = source
+	st.message = 'assets ready (${source})'
+	st.percent = 100
+	am.statuses[version] = st
 	am.mu.unlock()
 	eprintln('[assets] ready: ubuntu ${version} (${source})')
 }
@@ -92,8 +90,9 @@ fn (mut am AssetManager) finish_ok(version string, source string) {
 // ProgressDownloader streams the download to disk and reports progress.
 struct ProgressDownloader {
 mut:
-	am   &AssetManager = unsafe { nil }
-	file os.File
+	am      &AssetManager = unsafe { nil }
+	version string
+	file    os.File
 }
 
 fn (mut d ProgressDownloader) on_start(mut _request http.Request, path string) ! {
@@ -103,7 +102,7 @@ fn (mut d ProgressDownloader) on_start(mut _request http.Request, path string) !
 fn (mut d ProgressDownloader) on_chunk(_request &http.Request, chunk []u8, already_received u64, expected u64) ! {
 	d.file.write(chunk)!
 	if d.am != unsafe { nil } {
-		d.am.set_progress(i64(already_received), i64(expected))
+		d.am.set_progress(d.version, i64(already_received), i64(expected))
 	}
 }
 
@@ -111,27 +110,29 @@ fn (mut d ProgressDownloader) on_finish(_request &http.Request, _response &http.
 	d.file.close()
 }
 
-// discover_latest_iso_url scrapes the noble releases directory for the newest
-// ubuntu-24.04.x-live-server-amd64.iso.
-fn discover_latest_iso_url() !string {
-	resp := http.get(releases_noble_url)!
+// discover_latest_iso_url scrapes the releases directory for a version and
+// returns the newest ubuntu-<version>.x-live-server-amd64.iso.
+fn discover_latest_iso_url(version string) !string {
+	base_url := 'https://releases.ubuntu.com/${version}/'
+	resp := http.get(base_url)!
 	if resp.status_code != 200 {
-		return error('listing ${releases_noble_url} returned HTTP ${resp.status_code}')
+		return error('listing ${base_url} returned HTTP ${resp.status_code}')
 	}
-	name := pick_latest_noble_iso(resp.body) or {
-		return error('no ubuntu-24.04.x live-server ISO found on ${releases_noble_url}')
+	name := pick_latest_iso(resp.body, version) or {
+		return error('no ubuntu-${version}.x live-server ISO found on ${base_url}')
 	}
-	return releases_noble_url + name
+	return base_url + name
 }
 
-// pick_latest_noble_iso finds the highest ubuntu-24.04.N-live-server-amd64.iso
+// pick_latest_iso finds the highest ubuntu-<version>.N-live-server-amd64.iso
 // in an HTML directory listing (hrefs are split on '"').
-pub fn pick_latest_noble_iso(html string) ?string {
+pub fn pick_latest_iso(html string, version string) ?string {
+	prefix := 'ubuntu-${version}.'
 	mut best := ''
 	mut best_n := 0
 	for seg in html.split('"') {
-		if seg.starts_with(iso_name_prefix) && seg.ends_with(iso_name_suffix) {
-			n_str := seg[iso_name_prefix.len..seg.len - iso_name_suffix.len]
+		if seg.starts_with(prefix) && seg.ends_with(iso_name_suffix) {
+			n_str := seg[prefix.len..seg.len - iso_name_suffix.len]
 			n := strconv.atoi(n_str) or { -1 }
 			if n > best_n {
 				best_n = n

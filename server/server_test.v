@@ -28,6 +28,13 @@ fn test_full_api_flow() {
 	test_dir := os.join_path(os.vtmp_dir(), 'labvipxe_test_${os.getpid()}')
 	os.mkdir_all(test_dir)!
 	db_path := os.join_path(test_dir, 'test.db')
+	// dummy kernel/initrd so the boot flow reaches the install branch; the env
+	// var must be set before config.load() below
+	assets_dir := os.join_path(test_dir, 'assets-override')
+	os.mkdir_all(assets_dir)!
+	os.write_file(os.join_path(assets_dir, 'vmlinuz'), 'kernel-bytes')!
+	os.write_file(os.join_path(assets_dir, 'initrd'), 'initrd-bytes')!
+	os.setenv('LAB_V_IPXE_UBUNTU_ASSETS_DIR', assets_dir, true)
 	mut st := store.open(db_path)!
 	st.migrate()!
 	st.seed_admin('admin@ipxe.local', 'admin@pwd')!
@@ -66,23 +73,133 @@ fn test_full_api_flow() {
 	token := json2.decode[LoginRes](res3.body)!.token
 	assert token != ''
 
+	// settings: a fresh DB seeds the OS images catalog from config defaults
+	res3b := http.fetch(url: '${test_base}/api/settings', header: h_auth(token))!
+	assert res3b.status_code == 200
+	seeded := json2.decode[SettingsRes](res3b.body)!
+	assert seeded.os_images.len == 1
+	assert seeded.os_images[0].os_name == 'ubuntu'
+	assert seeded.os_images[0].version == config.default_ubuntu_version
+	assert seeded.os_images[0].nfs_root == config.default_nfs_root
+	assert seeded.os_images[0].is_default
+	assert seeded.providers.len == 1
+	assert seeded.providers[0].name == 'ubuntu'
+	assert seeded.providers[0].display_name == 'Ubuntu'
+	assert config.default_ubuntu_version in seeded.providers[0].versions
+	assert seeded.assets.len == 1
+	assert seeded.assets[0].os_name == 'ubuntu'
+	assert seeded.assets[0].version == config.default_ubuntu_version
+	assert seeded.assets[0].phase == 'ready'
+
 	// empty machine list
 	res4 := http.fetch(url: '${test_base}/api/machines', header: h_auth(token))!
 	assert res4.status_code == 200
 	assert json2.decode[[]MachineDto](res4.body)!.len == 0
 
-	// create with a lowercase MAC: it must come back UPPERCASE
+	// global ssh keys: set, echo back, and an empty payload keeps the current value
+	res4b := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"ssh_keys_default":"ssh-ed25519 AAAA global@host"}'
+	)!
+	assert res4b.status_code == 200
+	assert json2.decode[SettingsRes](res4b.body)!.ssh_keys_default == 'ssh-ed25519 AAAA global@host'
+	res4c := http.fetch(url: '${test_base}/api/settings', header: h_auth(token))!
+	assert json2.decode[SettingsRes](res4c.body)!.ssh_keys_default == 'ssh-ed25519 AAAA global@host'
+	res4d := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"ssh_keys_default":""}'
+	)!
+	assert res4d.status_code == 200
+	assert json2.decode[SettingsRes](res4d.body)!.ssh_keys_default == 'ssh-ed25519 AAAA global@host'
+
+	// OS images catalog: replace it with a lab-specific NFS export
+	res4e := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04","is_default":true}]}'
+	)!
+	assert res4e.status_code == 200
+	catalog := json2.decode[SettingsRes](res4e.body)!
+	assert catalog.os_images.len == 1
+	assert catalog.os_images[0].nfs_root == '10.0.0.9:/srv/nfs/ubuntu-24.04'
+	assert catalog.os_images[0].is_default
+
+	// no default flag -> the first row becomes the default
+	res4f := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04"}]}'
+	)!
+	assert res4f.status_code == 200
+	assert json2.decode[SettingsRes](res4f.body)!.os_images[0].is_default
+
+	// invalid catalogs are rejected wholesale
+	res4g := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"fedora","version":"41","nfs_root":"10.0.0.9:/srv/nfs/fedora"}]}'
+	)!
+	assert res4g.status_code == 400
+	res4h := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"99.99","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04"}]}'
+	)!
+	assert res4h.status_code == 400
+	res4i := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9"}]}'
+	)!
+	assert res4i.status_code == 400
+	res4j := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9:/srv/nfs with space"}]}'
+	)!
+	assert res4j.status_code == 400
+	res4k := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04"},{"os_name":"ubuntu","version":"24.04","nfs_root":"10.0.0.8:/srv/nfs/other"}]}'
+	)!
+	assert res4k.status_code == 400
+
+	// an empty list keeps the current catalog
+	res4l := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"os_images":[]}'
+	)!
+	assert res4l.status_code == 200
+	assert json2.decode[SettingsRes](res4l.body)!.os_images.len == 1
+
+	// create with a lowercase MAC: it must come back UPPERCASE; layout defaults
+	// to direct and the install disk round-trips
 	res5 := http.fetch(
 		method: .post
 		url:    '${test_base}/api/machines'
 		header: h_json_auth(token)
-		data:   '{"mac":"bc:24:11:00:24:99","hostname":"vm-test","password":"secret123","storage_layout":"zfs","boot_mode":"nfs"}'
+		data:   '{"mac":"bc:24:11:00:24:99","hostname":"vm-test","password":"secret123","storage_disk":"/dev/nvme1n1","boot_mode":"nfs"}'
 	)!
 	assert res5.status_code == 200
 	created := json2.decode[MachineDto](res5.body)!
 	assert created.mac == 'BC:24:11:00:24:99'
 	assert created.status == 'pending'
-	assert created.storage_layout == 'zfs'
+	assert created.storage_layout == 'direct'
+	assert created.storage_disk == '/dev/nvme1n1'
 	assert created.has_password
 
 	// duplicate MAC (different spelling) -> 409
@@ -103,12 +220,30 @@ fn test_full_api_flow() {
 	)!
 	assert res7.status_code == 400
 
+	// invalid storage_disk (not a /dev/... path) -> 400
+	res7b := http.fetch(
+		method: .post
+		url:    '${test_base}/api/machines'
+		header: h_json_auth(token)
+		data:   '{"mac":"bc:24:11:00:24:02","storage_disk":"sda"}'
+	)!
+	assert res7b.status_code == 400
+
+	// a machine pinned to an image missing from the catalog -> 400
+	res7c := http.fetch(
+		method: .post
+		url:    '${test_base}/api/machines'
+		header: h_json_auth(token)
+		data:   '{"mac":"bc:24:11:00:24:03","os_version":"99.99"}'
+	)!
+	assert res7c.status_code == 400
+
 	// update only provided fields; the password hash must survive
 	res8 := http.fetch(
 		method: .put
 		url:    '${test_base}/api/machines/${created.id}'
 		header: h_json_auth(token)
-		data:   '{"hostname":"renamed","username":"timi","ssh_keys":"ssh-ed25519 AAAA test@host","notes":"lab node"}'
+		data:   '{"hostname":"renamed","username":"timi","ssh_keys":"ssh-ed25519 AAAA test@host","notes":"lab node","storage_layout":"zfs","storage_disk":"auto"}'
 	)!
 	assert res8.status_code == 200
 	updated := json2.decode[MachineDto](res8.body)!
@@ -118,6 +253,7 @@ fn test_full_api_flow() {
 	assert updated.notes == 'lab node'
 	assert updated.has_password
 	assert updated.storage_layout == 'zfs'
+	assert updated.storage_disk == ''
 	assert updated.boot_mode == 'nfs'
 
 	// a machine without hostname cannot be approved
@@ -147,6 +283,43 @@ fn test_full_api_flow() {
 	approved := json2.decode[MachineDto](res11.body)!
 	assert approved.status == 'approved'
 	assert approved.approved_at > 0
+
+	// boot.ipxe serves the install script with the nfsroot inherited from the
+	// settings catalog (assets are ready via the override dir)
+	res11boot := http.fetch(url: '${test_base}/boot.ipxe?mac=BC:24:11:00:24:99')!
+	assert res11boot.status_code == 200
+	assert res11boot.body.contains('kernel http://')
+	assert res11boot.body.contains('nfsroot=10.0.0.9:/srv/nfs/ubuntu-24.04')
+
+	// per-machine keys override the global ones in the generated user-data
+	res11b := http.fetch(url: '${test_base}/os/ubuntu/24.04/BC:24:11:00:24:99/user-data')!
+	assert res11b.status_code == 200
+	assert res11b.body.contains('test@host')
+	assert !res11b.body.contains('global@host')
+
+	// 'auto' clears the per-machine keys: the machine inherits the global keys again
+	res11c := http.fetch(
+		method: .put
+		url:    '${test_base}/api/machines/${created.id}'
+		header: h_json_auth(token)
+		data:   '{"ssh_keys":"auto"}'
+	)!
+	assert res11c.status_code == 200
+	assert json2.decode[MachineDto](res11c.body)!.ssh_keys == ''
+	res11d := http.fetch(url: '${test_base}/os/ubuntu/24.04/BC:24:11:00:24:99/user-data')!
+	assert res11d.status_code == 200
+	assert res11d.body.contains('global@host')
+	assert !res11d.body.contains('test@host')
+
+	// an empty payload keeps the cleared value
+	res11e := http.fetch(
+		method: .put
+		url:    '${test_base}/api/machines/${created.id}'
+		header: h_json_auth(token)
+		data:   '{}'
+	)!
+	assert res11e.status_code == 200
+	assert json2.decode[MachineDto](res11e.body)!.ssh_keys == ''
 
 	// reinstall bumps install_count and re-arms
 	res12 := http.fetch(
@@ -192,6 +365,54 @@ fn test_full_api_flow() {
 	assert res17.status_code == 200
 	res18 := http.fetch(url: '${test_base}/api/machines', header: h_auth(token))!
 	assert json2.decode[[]MachineDto](res18.body)!.len == 1
+
+	// first PXE boot of an unknown MAC auto-creates a pending machine tracking
+	// the catalog's default image (nfs_root stays empty = inherit)
+	res18b := http.fetch(url: '${test_base}/boot.ipxe?mac=aa:bb:cc:00:11:22')!
+	assert res18b.status_code == 200
+	assert res18b.body.contains('waiting for approval')
+	res18c := http.fetch(url: '${test_base}/api/machines', header: h_auth(token))!
+	auto_created := json2.decode[[]MachineDto](res18c.body)!.filter(it.mac == 'AA:BB:CC:00:11:22')
+	assert auto_created.len == 1
+	assert auto_created[0].os_name == 'ubuntu'
+	assert auto_created[0].os_version == '24.04'
+	assert auto_created[0].nfs_root == ''
+
+	// assets fetch: all rows, a single catalog row, and validation
+	res18d := http.fetch(
+		method: .post
+		url:    '${test_base}/api/assets/fetch'
+		header: h_json_auth(token)
+		data:   '{}'
+	)!
+	assert res18d.status_code == 200
+	res18e := http.fetch(
+		method: .post
+		url:    '${test_base}/api/assets/fetch'
+		header: h_json_auth(token)
+		data:   '{"os_name":"ubuntu","version":"24.04"}'
+	)!
+	assert res18e.status_code == 200
+	res18f := http.fetch(
+		method: .post
+		url:    '${test_base}/api/assets/fetch'
+		header: h_json_auth(token)
+		data:   '{"os_name":"ubuntu","version":"99.99"}'
+	)!
+	assert res18f.status_code == 400
+	res18g := http.fetch(
+		method: .post
+		url:    '${test_base}/api/assets/fetch'
+		header: h_json_auth(token)
+		data:   '{"os_name":"ubuntu"}'
+	)!
+	assert res18g.status_code == 400
+
+	// a machine whose image was removed from the catalog gets a clear error
+	app.st.set_os_images([]store.OsImage{})!
+	res18h := http.fetch(url: '${test_base}/boot.ipxe?mac=BC:24:11:00:24:01')!
+	assert res18h.status_code == 200
+	assert res18h.body.contains('is not configured')
 
 	// logout invalidates the token
 	res19 := http.fetch(method: .post, url: '${test_base}/api/auth/logout', header: h_auth(token))!

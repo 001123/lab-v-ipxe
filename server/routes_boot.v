@@ -23,11 +23,25 @@ fn (app &App) provider_for(name string) ?providers.OSProvider {
 	return p
 }
 
+// nfs_root_for resolves a machine's NFS export: per-machine override first,
+// then the settings catalog row matching its OS image, then the config
+// default as a last resort.
+fn (app &App) nfs_root_for(m &store.Machine) string {
+	if m.nfs_root != '' {
+		return m.nfs_root
+	}
+	img := app.st.os_image_for(m.os_name, m.os_version) or {
+		return config.default_nfs_root
+	}
+	return img.nfs_root
+}
+
 fn (app &App) request_for(m &store.Machine, base_url string) core.BootRequest {
-	nfs_root := if m.nfs_root != '' {
-		m.nfs_root
+	nfs_root := app.nfs_root_for(m)
+	ssh_keys := if m.ssh_keys != '' {
+		m.ssh_keys
 	} else {
-		app.st.setting_or(store.setting_nfs_root, config.default_nfs_root)
+		app.st.setting_or(store.setting_ssh_keys, '')
 	}
 	return core.BootRequest{
 		base_url:       base_url
@@ -36,12 +50,13 @@ fn (app &App) request_for(m &store.Machine, base_url string) core.BootRequest {
 		hostname:       m.hostname
 		username:       m.username
 		password_hash:  m.password_hash
-		ssh_keys:       m.ssh_keys
+		ssh_keys:       ssh_keys
 		nfs_root:       nfs_root
 		os_name:        m.os_name
 		os_version:     m.os_version
 		arch:           'amd64'
 		storage_layout: m.storage_layout
+		storage_disk:   m.storage_disk
 		install_count:  m.install_count
 		boot_mode:      m.boot_mode
 	}
@@ -64,6 +79,11 @@ pub fn (mut app App) boot_ipxe(mut ctx Context) veb.Result {
 			mac_key:      mac_key
 			auto_created: true
 		}
+		// a fresh machine tracks the catalog's default OS image
+		if def := app.st.default_os_image() {
+			created.os_name = def.os_name
+			created.os_version = def.version
+		}
 		app.st.machine_save(mut created) or {
 			// lost a race with a concurrent first boot; fetch the stored row
 			app.st.machine_by_mac_key(mac_key) or {
@@ -76,12 +96,19 @@ pub fn (mut app App) boot_ipxe(mut ctx Context) veb.Result {
 	provider := app.provider_for(m.os_name) or {
 		return ctx.text(core.error_script('no provider for os "${m.os_name}"'))
 	}
+	// an image missing from the catalog cannot boot; already-installed
+	// machines keep sanbooting from their local disk
+	if m.status != .installed {
+		_ := app.st.os_image_for(m.os_name, m.os_version) or {
+			return ctx.text(core.error_script('os image "${m.os_name} ${m.os_version}" is not configured; add it under Settings > OS images'))
+		}
+	}
 	return match core.boot_action(m.status, provider.assets_ready(req)) {
 		.wait_approval {
 			ctx.text(core.wait_script(base_url, mac, 'this machine is waiting for approval.'))
 		}
 		.wait_assets {
-			app.start_assets_fetch()
+			app.start_assets_fetch(m.os_name, m.os_version)
 			ctx.text(core.wait_script(base_url, mac, 'installer assets are being prepared...'))
 		}
 		.install {
@@ -148,9 +175,12 @@ pub fn (mut app App) os_vendor_data(mut ctx Context, os_name string, version str
 
 @['/assets/:os_name/:version/:file'; get]
 pub fn (mut app App) assets_get(mut ctx Context, os_name string, version string, file string) veb.Result {
-	if os_name != 'ubuntu' || file !in ['vmlinuz', 'initrd'] {
+	if file !in ['vmlinuz', 'initrd'] {
 		return seed_not_found(mut ctx)
 	}
+	_ := app.provider_for(os_name) or { return seed_not_found(mut ctx) }
+	// TODO(multi-os): route through OSProvider once a second file-boot
+	// provider exists; only ubuntu has a file-backed AssetManager today
 	path := app.assets.path_for(version, file) or {
 		return seed_not_found(mut ctx)
 	}

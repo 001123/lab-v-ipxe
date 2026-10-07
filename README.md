@@ -3,7 +3,7 @@
 Server ZTP (Zero Touch Provisioning) đóng gói **1 file binary duy nhất**: dịch vụ iPXE HTTP, cấu hình autoinstall Ubuntu (cloud-init), quản lý máy bằng SQLite và UI quản trị hiện đại (login, bảng máy, drawer edit, approve máy lạ).
 
 - **BE**: V 0.5.2 + [veb](https://github.com/veb-org/veb) (bundled trong vlib), SQLite (`db.sqlite`), single binary.
-- **FE**: Vue 3 + Vite + TypeScript + Pinia + Naive UI, build xong **nhúng thẳng vào binary** (`$embed_file`).
+- **FE**: Next.js 16 (App Router, `output: 'export'` static) + React 19 + TypeScript + Tailwind v4 + shadcn/ui (Base UI) + SWR, build ra `web/out` rồi **nhúng thẳng vào binary** (`$embed_file`).
 - **MVP**: Ubuntu 24.04, **boot qua NFS** (kernel/initrd do app serve, rootfs qua NFS export có sẵn trên Proxmox), **cài root trên ZFS** (tune ARC cho máy ít RAM). Kiến trúc provider sẵn sàng cho OS khác (talos, suse, rocky...) và mode PUBLIC HTTP (netboot=url) sau này.
 
 ## Luồng hoạt động
@@ -21,9 +21,13 @@ Máy bật nguồn → router (OpenWrt dnsmasq, iPXE qua TFTP) → chain http://
 ## Chạy dev
 
 ```bash
-utils/dev.sh                    # SQLite + assets trong ./tmp, lắng nghe :8080
-# UI có hot-reload:  cd web && npm run dev   (http://localhost:5173, proxy /api về :8080)
+mise run dev                    # cả BE (:8080) + FE (:3000) trong 1 terminal (chạy `mise trust` một lần đầu)
+                                # tự kill stack dev cũ của repo trước khi chạy (theo port + cwd)
+utils/dev.sh                    # chỉ BE: SQLite + assets trong ./tmp, lắng nghe :8080 (binary dev build vào ./tmp)
+# UI có hot-reload:  cd web && npm run dev   (http://localhost:3000, proxy /api về :8080)
 ```
+
+Lưu ý: UI bên trong binary được nhúng từ `web/out` lúc **build** — sửa FE xong muốn thấy trên `:8080` phải chạy `(cd web && npm run build) && v run utils/gen_embed.vsh` rồi khởi động lại server V.
 
 Tài khoản mặc định (seed tự động): `admin@ipxe.local` / `admin@pwd`.
 
@@ -39,7 +43,7 @@ Tài khoản mặc định (seed tự động): `admin@ipxe.local` / `admin@pwd`
 | `LAB_V_IPXE_UBUNTU_ASSETS_DIR` | rỗng | Thư mục đã có sẵn `vmlinuz` + `initrd` (serve trực tiếp, không cần tải) |
 | `LAB_V_IPXE_KEEP_ISO` | `false` | Giữ lại ISO sau khi tải từ internet (mặc định xoá để tiết kiệm ~4GB) |
 
-Thứ tự nguồn assets: **cache** (`<data>/assets/ubuntu/<ver>/`) → **assets dir** → **ISO local** → **tải mới** từ `releases.ubuntu.com/noble/` (tự dò bản `24.04.x` mới nhất).
+Thứ tự nguồn assets: **cache** (`<data>/assets/ubuntu/<ver>/`) → **assets dir** → **ISO local** → **tải mới** từ `releases.ubuntu.com/<ver>/` (tự dò bản `<ver>.x` mới nhất, theo version của image trong Settings).
 
 > Lưu ý version-skew: kernel/initrd phải khớp với ISO mà NFS server đang mount. Khi pve export `/srv/nfs/ubuntu-24.04` từ 1 ISO cụ thể, hãy dùng `LAB_V_IPXE_UBUNTU_ISO` trỏ đúng ISO đó.
 
@@ -49,8 +53,8 @@ Thứ tự nguồn assets: **cache** (`<data>/assets/ubuntu/<ver>/`) → **asset
 # một lần cho build Linux nếu VROOT chưa có thirdparty sqlite:
 v run "$(dirname "$(command -v v)")/../vlib/db/sqlite/install_thirdparty_sqlite.vsh"
 
-utils/build.sh                  # FE → gen embed → v -prod → bin/lab-v-ipxe-{darwin-arm64,linux-amd64}
-utils/build.sh --skip-frontend  # chỉ build binary
+utils/build.sh                  # FE (web/out) → gen embed → v -prod → bin/lab-v-ipxe-{darwin-arm64,linux-amd64}
+utils/build.sh --skip-frontend  # chỉ build binary (dùng lại web/out hiện có)
 ```
 
 Binary Linux chạy trên LXC/VPS: `LAB_V_IPXE_DATA_DIR=/var/lib/lab-v-ipxe ./lab-v-ipxe-linux-amd64` (khuyến nghị systemd unit, `Environment=LAB_V_IPXE_PORT=80`).
@@ -102,7 +106,7 @@ utils/proxmox/vm-ctl.sh destroy 999                # có xác nhận
 2. Chạy app trên máy trong LAN (hoặc LXC) với `LAB_V_IPXE_UBUNTU_ISO=/srv/iso/ubuntu-24.04-live-server-amd64.iso`.
 3. Trỏ `filename`/`boot` của dnsmasq về `http://<ip-app>:8080/boot.ipxe?mac=${net0/mac}`.
 4. `utils/proxmox/create-test-vm.sh --recreate` → VM boot vào iPXE → xuất hiện **pending** trên UI.
-5. UI → **Approve** (nhập hostname, SSH key, password tùy chọn — mặc định `ubuntu`) → máy tự chain lại và bắt đầu cài (console iPXE hiển thị script NFS; kernel/initrd tải từ app).
+5. UI → **Approve** (chọn OS image, nhập hostname, SSH key, password tùy chọn — mặc định `ubuntu`) → máy tự chain lại và bắt đầu cài (console iPXE hiển thị script NFS; kernel/initrd tải từ app).
 6. Quá trình cài 15–40 phút (NFS + ZFS trên HDD càng lâu). Theo dõi trên console VM. Cài xong, late-command gọi phone-home → máy chuyển **installed**.
 7. Reboot → iPXE nhận script `sanboot` từ app → boot từ ổ đĩa.
 8. Muốn cài lại: UI → **Reinstall** (status về approved, `install_count++` để cloud-init chạy lại autoinstall).
@@ -118,12 +122,15 @@ curl -X POST -d 'mac=bc:24:11:00:24:99&hostname=vm-test' http://127.0.0.1:8080/a
 
 ## Ghi chú kỹ thuật
 
-- **ZFS root**: `storage.layout.name: zfs`; late-commands ghi `/etc/modprobe.d/zfs.conf` (`zfs_arc_max=512MB`, `arc_min=128MB`) + `update-initramfs -u` — cần cho máy ít RAM. Máy quá nhỏ có thể chọn layout `direct`/`lvm` per-máy trong drawer.
+- **OS images (Settings)**: defaults là **danh sách image** `{OS, version, NFS export, default}` (lưu ở setting `os_images`; DB cũ tự migrate 2 key `nfs_root_default`/`ubuntu_version` khi khởi động). Máy chọn image khi tạo/approve và **kế thừa** NFS export từ row tương ứng (override per-máy vẫn giữ); máy phát hiện qua PXE lần đầu nhận image đánh dấu default. Thêm **version mới** (vd Ubuntu 26.04) = thêm 1 dòng trong `providers/ubuntu/ubuntu.v` `versions()` + thêm row trong UI (kèm NFS export tương ứng); thêm **OS khác** = implement `OSProvider` (`name/display_name/versions/assets_ready/install_script/user_data/meta_data`) + register trong `server/app.v` → tự xuất hiện trong dropdown.
+- **Storage layout**: mặc định `direct` (ext4); `zfs` cũ có thêm late-commands ghi `/etc/modprobe.d/zfs.conf` (`zfs_arc_max=512MB`, `arc_min=128MB`) + `update-initramfs -u` — cần cho máy ít RAM. Field **Install disk** per-máy (drawer) nhận path `/dev/...` (vd `/dev/nvme0n1`, `/dev/disk/by-id/...`) → render thành `storage.layout.match.path`; để trống = subiquity tự chọn disk lớn nhất, nhập `auto` để reset về mặc định.
 - **Cmdline iPXE** giữ nguyên các điểm đã kiểm chứng: không đặt `initrd=` trên dòng kernel (xung đột UEFI EFI_LOAD_FILE2), `ramdisk_size=3500000`, `cloud-config-url=/dev/null`.
 - **Password OS**: lưu hash `$6$` (sha512-crypt, tương thích `/etc/shadow` và cloud-init); mật khẩu UI dùng bcrypt qua `crypto.bcrypt`; token phiên qua `veb.auth`.
 - **Máy ít RAM**: dùng NFS boot (rootfs stream qua NFS, RAM ~300MB–4GB) — mode PUBLIC HTTP (tmpfs) chỉ hợp máy ≥8GB và chưa làm trong MVP.
 - **Extractor** khi trích kernel/initrd từ ISO: `xorriso` → `7z` → `bsdtar` (macOS có bsdtar; LXC Debian cài `xorriso` hoặc `p7zip-full`).
 - **API**: toàn bộ endpoint `/api/*` cần Bearer token; `/boot.ipxe`, `/os/*`, `/assets/*`, `POST /api/machines/installed` (phone-home) là public theo thiết kế.
+- **SPA embedding**: server nạp FE vào bộ nhớ **một lần lúc khởi động**. Dev build đọc nguồn từ `web/out` — nếu FE thiếu/lỗi thời, UI tự trả 404 gọn gàng (API + iPXE vẫn chạy bình thường), không crash. Build `-prod`/`utils/build.sh` cần output FE tồn tại tại thời điểm build (gen_embed đọc từ `web/out`).
+- **Phục vụ static export của Next**: `webdist.resolve()` map URL → file (`/machines` → `machines.html`, có strip trailing slash); request RSC (`?_rsc=` / header `RSC`) trả payload `.txt` (`text/x-component`) để điều hướng client-side hoạt động; path không khớp trả `404.html` (đúng status 404); `/_next/static/**` được cache `immutable`, HTML/payload `no-cache`.
 
 ## Test
 
