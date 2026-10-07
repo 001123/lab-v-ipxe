@@ -316,9 +316,10 @@ pve_ssh "pct exec ${VMID} -- mkdir -p ${REMOTE_OPT} ${REMOTE_OPT}/data"
 if pve_ssh "pct exec ${VMID} -- systemctl is-active lab-v-ipxe >/dev/null 2>&1"; then
   echo "==> Stopping running lab-v-ipxe service..."
   pve_ssh "pct exec ${VMID} -- systemctl stop lab-v-ipxe"
-  # Backup existing binary
-  pve_ssh "pct exec ${VMID} -- cp -f ${REMOTE_BIN} ${REMOTE_BIN}.bak 2>/dev/null || true"
 fi
+
+# Terminate any stray processes and remove existing binary so pct push does not encounter 'Text file busy'
+pve_ssh "pct exec ${VMID} -- bash -c 'killall -9 lab-v-ipxe 2>/dev/null || true; [ -f ${REMOTE_BIN} ] && cp -f ${REMOTE_BIN} ${REMOTE_BIN}.bak 2>/dev/null || true; rm -f ${REMOTE_BIN}'"
 
 echo "==> Pushing binary into LXC ${VMID}..."
 pve_ssh "pct push ${VMID} ${HOST_STAGING} ${REMOTE_BIN} --perms 755"
