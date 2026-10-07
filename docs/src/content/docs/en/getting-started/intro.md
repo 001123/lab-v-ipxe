@@ -40,4 +40,4 @@ The project is built on the philosophy of simplicity, performance, and zero runt
 
 ## Next Steps
 
-Check out the [Quickstart Guide](/en/getting-started/quickstart/) to clone the repository and run the development environment in seconds.
+Check out the [Quickstart Guide](/lab-v-ipxe/en/getting-started/quickstart/) to clone the repository and run the development environment in seconds.

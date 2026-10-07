@@ -2,9 +2,11 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+const base = '/lab-v-ipxe';
+
 export default defineConfig({
   site: 'https://001123.github.io',
-  base: '/lab-v-ipxe',
+  base,
   integrations: [
     starlight({
       title: 'iPXE ZTP Docs',
@@ -40,7 +42,7 @@ export default defineConfig({
         {
           tag: 'script',
           attrs: {
-            src: '/scripts/cursor-effects.js',
+            src: `${base}/scripts/cursor-effects.js`,
             defer: true,
           },
         },

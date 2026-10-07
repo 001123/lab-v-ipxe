@@ -40,4 +40,4 @@ Dự án được xây dựng dựa trên triết lý tối giản, hiệu năng
 
 ## Bước Tiếp Theo
 
-Xem hướng dẫn [Cài Đặt Nhanh](/vi/getting-started/quickstart/) để chạy môi trường phát triển trên máy tính của bạn trong vài phút.
+Xem hướng dẫn [Cài Đặt Nhanh](/lab-v-ipxe/vi/getting-started/quickstart/) để chạy môi trường phát triển trên máy tính của bạn trong vài phút.
