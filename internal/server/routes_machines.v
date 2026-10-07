@@ -148,12 +148,93 @@ pub fn (mut app App) machines_get(mut ctx Context, id string) veb.Result {
 	return ctx.json(machine_to_dto(m))
 }
 
+// has_config_changes returns true if payload attempts to change any machine field
+// other than notes (used to guard machines in .installed or .installing status).
+fn has_config_changes(m store.Machine, p MachinePayload) bool {
+	if p.mac.trim_space() != '' {
+		if norm := macutils.normalize(p.mac) {
+			if norm != m.mac {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+	if p.hostname.trim_space() != '' && p.hostname.trim_space() != m.hostname {
+		return true
+	}
+	if p.username.trim_space() != '' && p.username.trim_space() != m.username {
+		return true
+	}
+	if p.password != '' {
+		return true
+	}
+	k := p.ssh_keys.trim_space()
+	if k == 'auto' {
+		if m.ssh_keys != '' {
+			return true
+		}
+	} else if k != '' && k != m.ssh_keys {
+		return true
+	}
+	r := p.nfs_root.trim_space()
+	if r == 'auto' {
+		if m.nfs_root != '' {
+			return true
+		}
+	} else if r != '' && r != m.nfs_root {
+		return true
+	}
+	if p.os_name.trim_space() != '' && p.os_name.trim_space() != m.os_name {
+		return true
+	}
+	if p.os_version.trim_space() != '' && p.os_version.trim_space() != m.os_version {
+		return true
+	}
+	if p.boot_mode.trim_space() != '' {
+		if bm := boot_mode_from(p.boot_mode) {
+			if bm != m.boot_mode {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+	if p.storage_layout.trim_space() != '' {
+		if sl := storage_layout_from(p.storage_layout) {
+			if sl != m.storage_layout {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+	if p.storage_disk.trim_space() != '' {
+		target_disk := if p.storage_disk.trim_space() == 'auto' {
+			''
+		} else {
+			p.storage_disk.trim_space()
+		}
+		if target_disk != m.storage_disk {
+			return true
+		}
+	}
+	return false
+}
+
 @['/api/machines/:id'; put]
 pub fn (mut app App) machines_update(mut ctx Context, id string) veb.Result {
 	payload := json2.decode[MachinePayload](ctx.req.data) or {
 		return bad_request(mut ctx, 'invalid json body')
 	}
 	mut m := app.st.machine_by_id(id.int()) or { return not_found(mut ctx, 'machine not found') }
+	if m.status in [.installed, .installing] && has_config_changes(m, payload) {
+		status_name := match m.status {
+			.installing { 'installing' }
+			else { 'installed' }
+		}
+		return bad_request(mut ctx, 'machine is ${status_name}; only notes can be updated. Reinstall the machine to change configuration')
+	}
 	apply_payload(mut m, payload, false) or { return bad_request(mut ctx, err.msg()) }
 	app.validate_machine_image(m) or { return bad_request(mut ctx, err.msg()) }
 	if existing := app.st.machine_by_mac_key(m.mac_key) {

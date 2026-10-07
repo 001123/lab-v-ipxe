@@ -9,6 +9,8 @@ import {
   FileTextIcon,
   HardDriveIcon,
   Loader2Icon,
+  LockIcon,
+  RotateCwIcon,
   SaveIcon,
   ServerIcon,
   XIcon,
@@ -16,6 +18,7 @@ import {
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -105,33 +108,74 @@ interface MachineSheetProps {
 }
 
 export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheetProps) {
-  const { create, approve, update } = useMachines(0)
+  const { create, approve, update, reinstall } = useMachines(0)
   const { settings } = useSettings()
   const images = settings?.os_images ?? []
   const providers = settings?.providers ?? []
+  const [currentMachine, setCurrentMachine] = useState<Machine | null>(machine)
   const [form, setForm] = useState<MachinePayload>({})
   const [showPassword, setShowPassword] = useState(false)
   const [overrideSshKeys, setOverrideSshKeys] = useState(false)
   const [overrideNfsRoot, setOverrideNfsRoot] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [reinstalling, setReinstalling] = useState(false)
+  const [confirmReinstall, setConfirmReinstall] = useState(false)
   const [wasOpen, setWasOpen] = useState(false)
 
   // reset the form on each open (adjusting state during render, no effect needed)
   if (open !== wasOpen) {
     setWasOpen(open)
     if (open) {
+      setCurrentMachine(machine)
       setForm(initForm(machine, images))
       setShowPassword(false)
       setOverrideSshKeys(Boolean(machine?.ssh_keys && machine.ssh_keys.trim() !== ''))
       setOverrideNfsRoot(Boolean(machine?.nfs_root && machine.nfs_root.trim() !== ''))
+      setConfirmReinstall(false)
     }
   }
+
+  const isLocked =
+    mode === 'edit' &&
+    !!currentMachine &&
+    (currentMachine.status === 'installed' || currentMachine.status === 'installing')
 
   function set<K extends keyof MachinePayload>(key: K, value: MachinePayload[K]) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
+  async function onReinstallFromSheet() {
+    if (!currentMachine) return
+    setReinstalling(true)
+    try {
+      const updated = await reinstall(currentMachine.id)
+      setCurrentMachine(updated)
+      toast.success(
+        `Reinstall armed for ${updated.hostname || updated.mac}. Configuration unlocked.`
+      )
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setReinstalling(false)
+      setConfirmReinstall(false)
+    }
+  }
+
   async function onSave() {
+    if (isLocked && currentMachine) {
+      setSaving(true)
+      try {
+        await update(currentMachine.id, { notes: form.notes?.trim() ?? '' })
+        toast.success('Notes updated')
+        onOpenChange(false)
+      } catch (err) {
+        toast.error(apiErrorMessage(err))
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
     if (mode !== 'edit' && !form.mac) {
       toast.warning('MAC address is required')
       return
@@ -171,11 +215,11 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
       if (mode === 'create') {
         await create(payload)
         toast.success('Machine created')
-      } else if (mode === 'approve' && machine) {
-        await approve(machine.id, payload)
-        toast.success(`Approved ${machine.hostname || 'machine'}`)
-      } else if (machine) {
-        await update(machine.id, payload)
+      } else if (mode === 'approve' && currentMachine) {
+        await approve(currentMachine.id, payload)
+        toast.success(`Approved ${currentMachine.hostname || 'machine'}`)
+      } else if (currentMachine) {
+        await update(currentMachine.id, payload)
         toast.success('Saved')
       }
       onOpenChange(false)
@@ -205,7 +249,8 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
         className="w-full max-w-full sm:max-w-[520px] data-[side=right]:w-full data-[side=right]:max-w-full sm:data-[side=right]:max-w-[520px] p-0 gap-0 flex flex-col h-full"
@@ -234,6 +279,43 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
         </SheetHeader>
 
         <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+          {isLocked && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-950 dark:text-amber-200">
+              <div className="flex items-start gap-2.5">
+                <LockIcon className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="font-semibold text-amber-900 dark:text-amber-100">
+                    {currentMachine?.status === 'installed'
+                      ? 'Machine is installed'
+                      : 'Installation in progress'}
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+                    {currentMachine?.status === 'installed'
+                      ? 'System parameters are locked because this machine is already provisioned. You can update notes below, or trigger a reinstall to reconfigure.'
+                      : 'System parameters are locked while the machine is installing OS. Only notes can be updated.'}
+                  </p>
+                </div>
+                {currentMachine?.status === 'installed' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 bg-background/80 hover:bg-background border-amber-500/30 shadow-2xs h-7 text-xs gap-1.5"
+                    onClick={() => setConfirmReinstall(true)}
+                    disabled={reinstalling}
+                  >
+                    {reinstalling ? (
+                      <Loader2Icon data-icon="inline-start" className="size-3 animate-spin" />
+                    ) : (
+                      <RotateCwIcon data-icon="inline-start" className="size-3" />
+                    )}
+                    Reinstall
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Section 1: Host & Credentials */}
           <div className="rounded-xl border bg-card/40 p-4 space-y-3.5 shadow-2xs">
             <div className="flex items-center gap-1.5 pb-1 border-b border-border/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -252,7 +334,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                   onChange={(e) => set('mac', normalizeMacInput(e.target.value))}
                   placeholder="BC:24:11:00:24:99"
                   className="font-mono text-xs sm:text-sm"
-                  disabled={mode === 'edit' && !!machine}
+                  disabled={(mode === 'edit' && !!currentMachine) || isLocked}
                 />
               </div>
               <div className="grid gap-1.5 min-w-0">
@@ -265,6 +347,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                   onChange={(e) => set('hostname', e.target.value)}
                   placeholder="vm-ztp-test"
                   className="text-xs sm:text-sm"
+                  disabled={isLocked}
                 />
               </div>
             </div>
@@ -278,11 +361,12 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                   onChange={(e) => set('username', e.target.value)}
                   placeholder="ubuntu"
                   className="text-xs sm:text-sm"
+                  disabled={isLocked}
                 />
               </div>
               <div className="grid gap-1.5 min-w-0">
                 <Label htmlFor="machine-password">
-                  {machine?.has_password
+                  {currentMachine?.has_password
                     ? 'Password (keep current)'
                     : 'Password (default: ubuntu)'}
                 </Label>
@@ -293,6 +377,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                     value={form.password ?? ''}
                     onChange={(e) => set('password', e.target.value)}
                     className="pr-9 text-xs sm:text-sm"
+                    disabled={isLocked}
                   />
                   <Button
                     type="button"
@@ -301,6 +386,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                     className="absolute top-0.5 right-0.5"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    disabled={isLocked}
                   >
                     {showPassword ? <EyeOffIcon className="size-3.5" /> : <EyeIcon className="size-3.5" />}
                   </Button>
@@ -313,6 +399,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                 <Checkbox
                   id="machine-override-ssh"
                   checked={overrideSshKeys}
+                  disabled={isLocked}
                   onCheckedChange={(checked) => {
                     const next = checked === true
                     setOverrideSshKeys(next)
@@ -338,6 +425,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                     rows={3}
                     placeholder="ssh-ed25519 AAAA... user@host"
                     className="font-mono text-xs"
+                    disabled={isLocked}
                     autoFocus
                   />
                   <p className="text-[11px] text-muted-foreground leading-normal">
@@ -364,6 +452,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
               <Select
                 items={osImageItems}
                 value={currentImageKey}
+                disabled={isLocked}
                 onValueChange={(value) => {
                   if (typeof value !== 'string') return
                   const slash = value.indexOf('/')
@@ -371,7 +460,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                   set('os_version', value.slice(slash + 1))
                 }}
               >
-                <SelectTrigger id="machine-os-image" className="w-full">
+                <SelectTrigger id="machine-os-image" className="w-full" disabled={isLocked}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -394,11 +483,12 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
               <Select
                 items={BOOT_MODE_OPTIONS}
                 value={form.boot_mode ?? 'nfs'}
+                disabled={isLocked}
                 onValueChange={(value) => {
                   if (typeof value === 'string') set('boot_mode', value as BootMode)
                 }}
               >
-                <SelectTrigger id="machine-boot-mode" className="w-full">
+                <SelectTrigger id="machine-boot-mode" className="w-full" disabled={isLocked}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -416,6 +506,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                 <Checkbox
                   id="machine-override-nfs"
                   checked={overrideNfsRoot}
+                  disabled={isLocked}
                   onCheckedChange={(checked) => {
                     const next = checked === true
                     setOverrideNfsRoot(next)
@@ -440,6 +531,7 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                     onChange={(e) => set('nfs_root', e.target.value)}
                     placeholder={selectedImage?.nfs_root ?? '192.168.250.4:/srv/nfs/ubuntu-26.04.1'}
                     className="font-mono text-xs sm:text-sm"
+                    disabled={isLocked}
                     autoFocus
                   />
                   <p className="text-[11px] text-muted-foreground leading-normal">
@@ -474,11 +566,12 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
               <Select
                 items={STORAGE_OPTIONS}
                 value={form.storage_layout ?? 'direct'}
+                disabled={isLocked}
                 onValueChange={(value) => {
                   if (typeof value === 'string') set('storage_layout', value as StorageLayout)
                 }}
               >
-                <SelectTrigger id="machine-storage" className="w-full">
+                <SelectTrigger id="machine-storage" className="w-full" disabled={isLocked}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -502,33 +595,38 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                 onChange={(e) => set('storage_disk', e.target.value)}
                 placeholder="/dev/nvme0n1 or /dev/disk/by-id/..."
                 className="font-mono text-xs sm:text-sm"
+                disabled={isLocked}
               />
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <span className="text-[11px] text-muted-foreground">Quick fill:</span>
                 <button
                   type="button"
+                  disabled={isLocked}
                   onClick={() =>
                     set('storage_disk', form.storage_disk === '/dev/nvme0n1' ? '' : '/dev/nvme0n1')
                   }
                   className={cn(
-                    'font-mono text-[11px] px-2 py-0.5 rounded border transition-colors cursor-pointer',
+                    'font-mono text-[11px] px-2 py-0.5 rounded border transition-colors',
                     form.storage_disk === '/dev/nvme0n1'
                       ? 'border-primary/50 bg-primary/10 text-primary font-medium'
-                      : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground'
+                      : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground',
+                    isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                   )}
                 >
                   /dev/nvme0n1
                 </button>
                 <button
                   type="button"
+                  disabled={isLocked}
                   onClick={() =>
                     set('storage_disk', form.storage_disk === '/dev/sda' ? '' : '/dev/sda')
                   }
                   className={cn(
-                    'font-mono text-[11px] px-2 py-0.5 rounded border transition-colors cursor-pointer',
+                    'font-mono text-[11px] px-2 py-0.5 rounded border transition-colors',
                     form.storage_disk === '/dev/sda'
                       ? 'border-primary/50 bg-primary/10 text-primary font-medium'
-                      : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground'
+                      : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground',
+                    isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                   )}
                 >
                   /dev/sda
@@ -564,33 +662,60 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
           </div>
         </div>
 
-        <SheetFooter className="border-t bg-background/95 backdrop-blur-sm p-4 pb-8 sm:pb-4 flex flex-row items-center justify-end gap-2.5 shrink-0">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1 sm:flex-initial"
-            onClick={() => onOpenChange(false)}
-          >
-            <XIcon data-icon="inline-start" />
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            className="flex-1 sm:flex-initial min-w-[120px]"
-            onClick={onSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <Loader2Icon data-icon="inline-start" className="animate-spin" />
-            ) : mode === 'approve' ? (
-              <CheckIcon data-icon="inline-start" />
-            ) : (
-              <SaveIcon data-icon="inline-start" />
-            )}
-            {mode === 'approve' ? 'Approve' : 'Save'}
-          </Button>
+        <SheetFooter className="border-t bg-background/95 backdrop-blur-sm p-4 pb-8 sm:pb-4 flex flex-row items-center justify-between gap-2.5 shrink-0">
+          {currentMachine?.status === 'installed' && mode === 'edit' && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="mr-auto"
+              onClick={() => setConfirmReinstall(true)}
+              disabled={reinstalling || saving}
+            >
+              {reinstalling ? (
+                <Loader2Icon data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <RotateCwIcon data-icon="inline-start" />
+              )}
+              Reinstall
+            </Button>
+          )}
+          <div className="flex items-center gap-2.5 ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 sm:flex-initial"
+              onClick={() => onOpenChange(false)}
+            >
+              <XIcon data-icon="inline-start" />
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 sm:flex-initial min-w-[120px]"
+              onClick={onSave}
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2Icon data-icon="inline-start" className="animate-spin" />
+              ) : mode === 'approve' ? (
+                <CheckIcon data-icon="inline-start" />
+              ) : (
+                <SaveIcon data-icon="inline-start" />
+              )}
+              {mode === 'approve' ? 'Approve' : isLocked ? 'Save notes' : 'Save'}
+            </Button>
+          </div>
         </SheetFooter>
       </SheetContent>
     </Sheet>
+      <ConfirmDialog
+        open={confirmReinstall}
+        onOpenChange={setConfirmReinstall}
+        title="Reinstall machine"
+        description={`Re-arm the installer for ${currentMachine?.hostname || currentMachine?.mac}? System parameters will be unlocked for reconfiguration.`}
+        confirmLabel="Reinstall & unlock"
+        onConfirm={onReinstallFromSheet}
+      />
+    </>
   )
 }

@@ -375,13 +375,6 @@ fn test_full_api_flow() {
 	assert approved.status == 'approved'
 	assert approved.approved_at > 0
 
-	// boot.ipxe serves the install script with the nfsroot inherited from the
-	// settings catalog (assets are ready via the override dir)
-	res11boot := http.fetch(url: '${test_base}/boot.ipxe?mac=BC:24:11:00:24:99')!
-	assert res11boot.status_code == 200
-	assert res11boot.body.contains('kernel http://')
-	assert res11boot.body.contains('nfsroot=10.0.0.9:/srv/nfs/ubuntu-24.04')
-
 	// per-machine keys override the global ones in the generated user-data
 	res11b := http.fetch(url: '${test_base}/os/ubuntu/24.04.5/BC:24:11:00:24:99/user-data')!
 	assert res11b.status_code == 200
@@ -422,6 +415,33 @@ fn test_full_api_flow() {
 	assert res11e.status_code == 200
 	assert json2.decode[MachineDto](res11e.body)!.ssh_keys == ''
 
+	// boot.ipxe serves the install script with the nfsroot inherited from the
+	// settings catalog (assets are ready via the override dir); flips machine to installing
+	res11boot := http.fetch(url: '${test_base}/boot.ipxe?mac=BC:24:11:00:24:99')!
+	assert res11boot.status_code == 200
+	assert res11boot.body.contains('kernel http://')
+	assert res11boot.body.contains('nfsroot=10.0.0.9:/srv/nfs/ubuntu-24.04')
+
+	// installing machine rejects configuration changes
+	res_installing_reject := http.fetch(
+		method: .put
+		url:    '${test_base}/api/machines/${created.id}'
+		header: h_json_auth(token)
+		data:   '{"hostname":"new-name"}'
+	)!
+	assert res_installing_reject.status_code == 400
+	assert res_installing_reject.body.contains('only notes can be updated')
+
+	// installing machine allows updating notes
+	res_installing_notes := http.fetch(
+		method: .put
+		url:    '${test_base}/api/machines/${created.id}'
+		header: h_json_auth(token)
+		data:   '{"notes":"installing in progress"}'
+	)!
+	assert res_installing_notes.status_code == 200
+	assert json2.decode[MachineDto](res_installing_notes.body)!.notes == 'installing in progress'
+
 	// reinstall bumps install_count and re-arms
 	res12 := http.fetch(
 		method: .post
@@ -444,6 +464,26 @@ fn test_full_api_flow() {
 	home := json2.decode[MachineDto](res14.body)!
 	assert home.status == 'installed'
 	assert home.installed_at > 0
+
+	// installed machine rejects configuration changes
+	res_installed_reject := http.fetch(
+		method: .put
+		url:    '${test_base}/api/machines/${created.id}'
+		header: h_json_auth(token)
+		data:   '{"hostname":"cannot-change"}'
+	)!
+	assert res_installed_reject.status_code == 400
+	assert res_installed_reject.body.contains('only notes can be updated')
+
+	// installed machine allows updating notes
+	res_installed_notes := http.fetch(
+		method: .put
+		url:    '${test_base}/api/machines/${created.id}'
+		header: h_json_auth(token)
+		data:   '{"notes":"installed rack 42"}'
+	)!
+	assert res_installed_notes.status_code == 200
+	assert json2.decode[MachineDto](res_installed_notes.body)!.notes == 'installed rack 42'
 
 	// phone-home for unknown MAC -> 404
 	res15 := http.fetch(
