@@ -1,6 +1,5 @@
 module config
 
-import dirs
 import os
 import strconv
 
@@ -26,8 +25,8 @@ pub mut:
 
 pub fn load() Config {
 	return Config{
-		port:              env_int('LAB_V_IPXE_PORT', 8080)
-		data_dir:          dirs.resolve_data_dir()
+		port:              env_int('LAB_V_IPXE_PORT', 4793)
+		data_dir:          resolve_data_dir()
 		base_url:          env_str('LAB_V_IPXE_BASE_URL', '')
 		admin_email:       env_str('LAB_V_IPXE_ADMIN_EMAIL', default_admin_email)
 		admin_password:    env_str('LAB_V_IPXE_ADMIN_PASSWORD', default_admin_password)

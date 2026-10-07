@@ -1,6 +1,6 @@
 module providers
 
-import core
+import internal.boot
 
 // OSProvider renders boot configuration for one operating system family.
 // Future OSes (talos, suse, rocky, ...) implement this interface and register
@@ -16,11 +16,11 @@ pub interface OSProvider {
 	// releases of a supported series).
 	supports_version(version string) bool
 	// assets_ready reports whether kernel/rootfs assets are locally available.
-	assets_ready(req core.BootRequest) bool
+	assets_ready(req boot.BootRequest) bool
 	// install_script returns the iPXE script that boots the installer.
-	install_script(req core.BootRequest) !string
+	install_script(req boot.BootRequest) !string
 	// user_data returns the autoinstall/cloud-init user-data (seed file).
-	user_data(req core.BootRequest) !string
+	user_data(req boot.BootRequest) !string
 	// meta_data returns the cloud-init meta-data (seed file).
-	meta_data(req core.BootRequest) !string
+	meta_data(req boot.BootRequest) !string
 }

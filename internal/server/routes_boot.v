@@ -1,10 +1,10 @@
 module server
 
-import config
-import core
-import macutils
-import providers
-import store
+import internal.config
+import internal.boot
+import internal.lib.macutils
+import internal.providers
+import internal.store
 import veb
 
 // base_url resolves the externally reachable URL for building boot scripts:
@@ -43,14 +43,14 @@ fn (app &App) nfs_root_for(m &store.Machine) string {
 	return img.nfs_root
 }
 
-fn (app &App) request_for(m &store.Machine, base_url string) core.BootRequest {
+fn (app &App) request_for(m &store.Machine, base_url string) boot.BootRequest {
 	nfs_root := app.nfs_root_for(m)
 	ssh_keys := if m.ssh_keys != '' {
 		m.ssh_keys
 	} else {
 		app.st.setting_or(store.setting_ssh_keys, '')
 	}
-	return core.BootRequest{
+	return boot.BootRequest{
 		base_url:       base_url
 		mac:            m.mac
 		mac_key:        m.mac_key
@@ -73,10 +73,10 @@ fn (app &App) request_for(m &store.Machine, base_url string) core.BootRequest {
 pub fn (mut app App) boot_ipxe(mut ctx Context) veb.Result {
 	mac_raw := ctx.query['mac'].trim_space()
 	if mac_raw == '' {
-		return ctx.text(core.error_script('missing mac query parameter'))
+		return ctx.text(boot.error_script('missing mac query parameter'))
 	}
 	mac := macutils.normalize(mac_raw) or {
-		return ctx.text(core.error_script('invalid mac "${mac_raw}"'))
+		return ctx.text(boot.error_script('invalid mac "${mac_raw}"'))
 	}
 	mac_key := macutils.key(mac)
 	base_url := app.base_url(&ctx)
@@ -94,41 +94,41 @@ pub fn (mut app App) boot_ipxe(mut ctx Context) veb.Result {
 		app.st.machine_save(mut created) or {
 			// lost a race with a concurrent first boot; use the stored row
 			created = app.st.machine_by_mac_key(mac_key) or {
-				return ctx.text(core.error_script('database error'))
+				return ctx.text(boot.error_script('database error'))
 			}
 		}
 		created
 	}
 	req := app.request_for(m, base_url)
 	provider := app.provider_for(m.os_name) or {
-		return ctx.text(core.error_script('no provider for os "${m.os_name}"'))
+		return ctx.text(boot.error_script('no provider for os "${m.os_name}"'))
 	}
 	// an image missing from the catalog cannot boot; already-installed
 	// machines keep sanbooting from their local disk
 	if m.status != .installed {
 		_ := app.st.os_image_for(m.os_name, m.os_version) or {
-			return ctx.text(core.error_script('os image "${m.os_name} ${m.os_version}" is not configured; add it under Settings > OS images'))
+			return ctx.text(boot.error_script('os image "${m.os_name} ${m.os_version}" is not configured; add it under Settings > OS images'))
 		}
 	}
-	return match core.boot_action(m.status, provider.assets_ready(req)) {
+	return match boot.boot_action(m.status, provider.assets_ready(req)) {
 		.wait_approval {
-			ctx.text(core.wait_script(base_url, mac, 'this machine is waiting for approval.'))
+			ctx.text(boot.wait_script(base_url, mac, 'this machine is waiting for approval.'))
 		}
 		.wait_assets {
 			app.start_assets_fetch(m.os_name, m.os_version, false)
-			ctx.text(core.wait_script(base_url, mac, 'installer assets are being prepared...'))
+			ctx.text(boot.wait_script(base_url, mac, 'installer assets are being prepared...'))
 		}
 		.install {
 			script := provider.install_script(req) or {
-				return ctx.text(core.error_script(err.msg()))
+				return ctx.text(boot.error_script(err.msg()))
 			}
-			if core.transition_after_boot_script(mut m) {
+			if boot.transition_after_boot_script(mut m) {
 				app.st.machine_save(mut m) or { eprintln('[boot] save transition failed: ${err.msg()}') }
 			}
 			ctx.text(script)
 		}
 		.sanboot {
-			ctx.text(core.sanboot_script())
+			ctx.text(boot.sanboot_script())
 		}
 	}
 }

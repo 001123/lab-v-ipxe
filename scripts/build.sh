@@ -3,10 +3,10 @@
 # binaries into bin/.
 #
 # Usage:
-#   utils/build.sh                 # frontend + darwin-arm64 + linux-amd64
-#   utils/build.sh --skip-frontend # reuse the current web/out
-#   utils/build.sh --host-only     # only the host binary
-#   utils/build.sh --linux-only    # only the linux-amd64 cross binary
+#   scripts/build.sh                 # frontend + darwin-arm64 + linux-amd64
+#   scripts/build.sh --skip-frontend # reuse the current web/out
+#   scripts/build.sh --host-only     # only the host binary
+#   scripts/build.sh --linux-only    # only the linux-amd64 cross binary
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${ROOT}"
@@ -50,7 +50,7 @@ fi
 if [[ "${SKIP_FE}" == "0" ]]; then
   echo "==> building frontend"
   (cd web && npm install --no-fund --no-audit && npm run build)
-  v run utils/gen_embed.vsh
+  v run scripts/gen_embed.vsh
 fi
 
 echo "==> type-check"

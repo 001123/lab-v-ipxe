@@ -1,7 +1,7 @@
 module server
 
 import json2
-import store
+import internal.store
 import veb
 
 @['/api/auth/login'; post]

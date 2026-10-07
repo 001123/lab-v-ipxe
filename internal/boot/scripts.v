@@ -1,4 +1,4 @@
-module core
+module boot
 
 // Generic iPXE snippets shared by all providers. Each returns a complete
 // #!ipxe script.

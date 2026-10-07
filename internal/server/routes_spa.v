@@ -2,7 +2,7 @@ module server
 
 import os
 import veb
-import webdist
+import internal.webdist
 
 // spa serves the embedded Next.js static export from an in-memory cache built
 // once at startup. veb orders variadic catch-all routes after every exact

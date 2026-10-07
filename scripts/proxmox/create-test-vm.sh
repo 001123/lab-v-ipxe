@@ -3,7 +3,7 @@
 # (pending -> approve -> install -> phone-home -> sanboot -> reinstall).
 #
 # Usage:
-#   utils/proxmox/create-test-vm.sh [--vmid 999] [--name ztp-test-999]
+#   scripts/proxmox/create-test-vm.sh [--vmid 999] [--name ztp-test-999]
 #       [--mac 52:54:00:99:00:01] [--memory 4096] [--cores 2] [--disk 32]
 #       [--recreate] [--no-start]
 set -euo pipefail

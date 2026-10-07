@@ -1,6 +1,6 @@
 module ubuntu
 
-import core
+import internal.boot
 import json2
 import net.urllib
 
@@ -27,7 +27,7 @@ fn sh_sq(s string) string {
 }
 
 // render_user_data builds the subiquity autoinstall user-data for one machine.
-pub fn render_user_data(req core.BootRequest) string {
+pub fn render_user_data(req boot.BootRequest) string {
 	password := if req.password_hash != '' { req.password_hash } else { fallback_password_hash }
 	mut lines := []string{}
 	lines << '#cloud-config'
@@ -80,6 +80,6 @@ pub fn render_user_data(req core.BootRequest) string {
 
 // render_meta_data builds the NoCloud meta-data. instance-id changes on every
 // reinstall so cloud-init re-runs the autoinstall.
-pub fn render_meta_data(req core.BootRequest) string {
+pub fn render_meta_data(req boot.BootRequest) string {
 	return 'instance-id: i-${req.mac_key}-${req.install_count}\nlocal-hostname: ${yaml_str(req.hostname)}\n'
 }

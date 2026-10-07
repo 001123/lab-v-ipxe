@@ -1,9 +1,9 @@
 module server
 
 import json2
-import macutils
-import sha512crypt
-import store
+import internal.lib.macutils
+import internal.lib.sha512crypt
+import internal.store
 import veb
 
 fn bad_request(mut ctx Context, msg string) veb.Result {

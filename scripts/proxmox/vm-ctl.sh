@@ -2,10 +2,10 @@
 # Control Proxmox QEMU VMs (test helpers).
 #
 # Usage:
-#   utils/proxmox/vm-ctl.sh list
-#   utils/proxmox/vm-ctl.sh status <vmid>
-#   utils/proxmox/vm-ctl.sh start|stop|shutdown <vmid>
-#   utils/proxmox/vm-ctl.sh destroy <vmid>     (asks for confirmation)
+#   scripts/proxmox/vm-ctl.sh list
+#   scripts/proxmox/vm-ctl.sh status <vmid>
+#   scripts/proxmox/vm-ctl.sh start|stop|shutdown <vmid>
+#   scripts/proxmox/vm-ctl.sh destroy <vmid>     (asks for confirmation)
 set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd)/env.sh"
 

@@ -1,6 +1,6 @@
-module core
+module boot
 
-import store
+import internal.store
 
 // BootRequest is the plain-data input providers render from. It is assembled
 // from a store.Machine plus the request context (base URL, settings defaults).

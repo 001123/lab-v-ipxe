@@ -1,4 +1,4 @@
-module dirs
+module config
 
 import os
 

@@ -1,6 +1,6 @@
 module server
 
-import store
+import internal.store
 
 pub struct LoginPayload {
 pub:

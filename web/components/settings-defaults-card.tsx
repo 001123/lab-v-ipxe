@@ -1,13 +1,37 @@
 'use client'
 
-import { useState } from 'react'
-import { Loader2Icon, PlusIcon, SaveIcon, StarIcon, Trash2Icon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  CircleCheckIcon,
+  CircleXIcon,
+  ClockIcon,
+  CloudDownloadIcon,
+  DownloadIcon,
+  KeyRoundIcon,
+  LaptopIcon,
+  Loader2Icon,
+  PackageOpenIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  SaveIcon,
+  StarIcon,
+  Trash2Icon,
+  type LucideIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import {
   Select,
   SelectContent,
@@ -15,15 +39,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useSettings } from '@/hooks/use-settings'
 import { apiErrorMessage } from '@/lib/api'
-import type { OsImage, ProviderInfo } from '@/lib/types'
+import { imageLabel } from '@/lib/os-images'
+import type { AssetPhase, OsImage, ProviderInfo, SettingsRes } from '@/lib/types'
 
 interface Form {
   images: OsImage[]
   ssh_keys_default: string
   base_url_override: string
+}
+
+function areImagesEqual(a: OsImage[], b: OsImage[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (
+      a[i].os_name !== b[i].os_name ||
+      a[i].version !== b[i].version ||
+      a[i].nfs_root.trim() !== b[i].nfs_root.trim() ||
+      Boolean(a[i].is_default) !== Boolean(b[i].is_default)
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+function computeIsDirty(form: Form | null, settings: SettingsRes | undefined): boolean {
+  if (!form || !settings) return false
+  if (form.ssh_keys_default.trim() !== (settings.ssh_keys_default ?? '').trim()) return true
+  if (form.base_url_override.trim() !== (settings.base_url_override ?? '').trim()) return true
+  if (!areImagesEqual(form.images, settings.os_images ?? [])) return true
+  return false
 }
 
 interface SelectOption {
@@ -33,6 +89,25 @@ interface SelectOption {
 }
 
 const NFS_ROOT_RE = /^[^\s:]+:\/.+$/
+
+const PHASE_BADGES: Record<
+  AssetPhase,
+  { variant?: 'secondary' | 'destructive'; className?: string }
+> = {
+  idle: { variant: 'secondary' },
+  downloading: { className: 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200' },
+  extracting: { className: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200' },
+  ready: { className: 'bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200' },
+  failed: { variant: 'destructive' },
+}
+
+const PHASE_ICONS: Record<AssetPhase, LucideIcon> = {
+  idle: ClockIcon,
+  downloading: DownloadIcon,
+  extracting: PackageOpenIcon,
+  ready: CircleCheckIcon,
+  failed: CircleXIcon,
+}
 
 function osOptionsFor(providers: ProviderInfo[], img: OsImage): SelectOption[] {
   const options: SelectOption[] = providers.map((p) => ({ value: p.name, label: p.display_name }))
@@ -50,7 +125,53 @@ function versionOptionsFor(provider: ProviderInfo | undefined, img: OsImage): Se
   return options
 }
 
-function validate(images: OsImage[]): string | null {
+function parseSshKeys(raw: string): {
+  keys: { type: string; comment: string; full: string }[]
+  error: string | null
+} {
+  const trimmed = raw.trim()
+  if (!trimmed || trimmed === 'auto') return { keys: [], error: null }
+
+  if (trimmed.includes('PRIVATE KEY')) {
+    return {
+      keys: [],
+      error: 'Private key detected! Please paste only public keys (e.g. ssh-ed25519, ssh-rsa).',
+    }
+  }
+
+  const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean)
+  const keys: { type: string; comment: string; full: string }[] = []
+
+  for (const line of lines) {
+    if (line === 'auto') continue
+    const parts = line.split(/\s+/)
+    if (parts.length < 2) {
+      return {
+        keys: [],
+        error: `Invalid key format: "${line.slice(0, 30)}..." (expected "<type> <base64-key> [comment]")`,
+      }
+    }
+    const type = parts[0]
+    if (!type.startsWith('ssh-') && !type.startsWith('ecdsa-') && !type.startsWith('sk-')) {
+      return {
+        keys: [],
+        error: `Unsupported key type "${type}". Key must start with ssh-, ecdsa-, or sk-.`,
+      }
+    }
+    if (line.includes("'")) {
+      return {
+        keys: [],
+        error: "SSH key cannot contain single quotes (')",
+      }
+    }
+    const comment = parts.slice(2).join(' ') || 'no comment'
+    keys.push({ type, comment, full: line })
+  }
+
+  return { keys, error: null }
+}
+
+function validate(images: OsImage[], baseUrl: string, sshError: string | null): string | null {
   if (images.length === 0) return 'Add at least one OS image'
   const seen = new Set<string>()
   for (const img of images) {
@@ -61,13 +182,33 @@ function validate(images: OsImage[]): string | null {
       return `NFS export for ${key} must look like host:/path`
     }
   }
+  const cleanUrl = baseUrl.trim()
+  if (cleanUrl) {
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      return 'iPXE Server URL must start with http:// or https://'
+    }
+    if (/\s/.test(cleanUrl)) {
+      return 'iPXE Server URL cannot contain whitespace'
+    }
+  }
+  if (sshError) {
+    return sshError
+  }
   return null
 }
 
 export function SettingsDefaultsCard() {
-  const { settings, save } = useSettings()
+  const { settings, save, fetchAssetsNow } = useSettings()
   const [form, setForm] = useState<Form | null>(null)
   const [saving, setSaving] = useState(false)
+  const [busyKey, setBusyKey] = useState<string | null>(null)
+  const [browserOrigin, setBrowserOrigin] = useState('')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setBrowserOrigin(window.location.origin)
+    }
+  }, [])
 
   const providers = settings?.providers ?? []
 
@@ -123,17 +264,34 @@ export function SettingsDefaultsCard() {
     })
   }
 
+  async function onFetch(img: OsImage) {
+    const key = `${img.os_name}/${img.version}`
+    setBusyKey(key)
+    try {
+      await fetchAssetsNow({ os_name: img.os_name, version: img.version })
+      toast.success(`Asset preparation started for ${imageLabel(img, providers)}`)
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
   async function onSave() {
     if (!form) return
-    const problem = validate(form.images)
+    const parsedSsh = parseSshKeys(form.ssh_keys_default)
+    const problem = validate(form.images, form.base_url_override, parsedSsh.error)
     if (problem) {
       toast.warning(problem)
       return
     }
     setSaving(true)
     try {
+      // If the user cleared the textarea, send 'auto' so backend resets the setting in DB
+      const sshPayload =
+        form.ssh_keys_default.trim() === '' ? 'auto' : form.ssh_keys_default.trim()
       const res = await save({
-        ssh_keys_default: form.ssh_keys_default,
+        ssh_keys_default: sshPayload,
         base_url_override: form.base_url_override,
         os_images: form.images.map((img) => ({ ...img, nfs_root: img.nfs_root.trim() })),
       })
@@ -151,152 +309,417 @@ export function SettingsDefaultsCard() {
     }
   }
 
+  const isDirty = computeIsDirty(form, settings)
+
+  function onDiscard() {
+    if (!settings) return
+    setForm({
+      images: settings.os_images.map((img) => ({ ...img })),
+      ssh_keys_default: settings.ssh_keys_default,
+      base_url_override: settings.base_url_override,
+    })
+    toast.info('Changes discarded')
+  }
+
+  const rawBaseUrl = form?.base_url_override?.trim() ?? ''
+  const baseUrlError =
+    rawBaseUrl && !rawBaseUrl.startsWith('http://') && !rawBaseUrl.startsWith('https://')
+      ? 'URL must start with http:// or https://'
+      : rawBaseUrl && /\s/.test(rawBaseUrl)
+        ? 'URL cannot contain whitespace'
+        : null
+
+  const parsedSsh = parseSshKeys(form?.ssh_keys_default ?? '')
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Defaults</CardTitle>
+      <CardHeader className="border-b bg-muted/15 px-6 py-4">
+        <CardTitle className="text-lg font-semibold tracking-tight">Global Configuration</CardTitle>
+        <CardDescription>
+          Manage OS installation images, server network endpoint, and global SSH credentials.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid gap-6 p-6">
         <div className="grid gap-3">
-          <div>
-            <Label>OS images</Label>
-            <p className="text-xs text-muted-foreground">
-              Machines pick one of these images to install. The star marks the image used for newly
-              discovered machines; the NFS export is inherited unless a machine defines its own.
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <Label className="text-sm font-semibold">OS images</Label>
+              <p className="text-xs text-muted-foreground">
+                Machines pick one of these images to install. The star marks the image used for newly
+                discovered machines; the NFS export is inherited unless a machine defines its own.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addImage}
+              disabled={!form || providers.length === 0}
+            >
+              <PlusIcon data-icon="inline-start" />
+              Add image
+            </Button>
           </div>
-          {form?.images.map((img, idx) => {
-            const provider = providers.find((p) => p.name === img.os_name)
-            const osOptions = osOptionsFor(providers, img)
-            const versionOptions = versionOptionsFor(provider, img)
-            return (
-              <div key={idx} className="grid gap-2 rounded-lg border p-3">
-                <div className="flex items-center gap-2">
-                  <Select
-                    items={osOptions}
-                    value={img.os_name}
-                    onValueChange={(value) => {
-                      if (typeof value !== 'string') return
-                      const picked = providers.find((p) => p.name === value)
-                      updateImage(idx, { os_name: value, version: picked?.versions[0] ?? img.version })
-                    }}
-                  >
-                    <SelectTrigger className="flex-1" aria-label="OS">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {osOptions.map((option) => (
-                        <SelectItem
-                          key={option.value}
-                          value={option.value}
-                          disabled={option.disabled}
-                        >
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    items={versionOptions}
-                    value={img.version}
-                    onValueChange={(value) => {
-                      if (typeof value === 'string') updateImage(idx, { version: value })
-                    }}
-                  >
-                    <SelectTrigger className="w-28" aria-label="Version">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {versionOptions.map((option) => (
-                        <SelectItem
-                          key={option.value}
-                          value={option.value}
-                          disabled={option.disabled}
-                        >
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {img.is_default && <Badge variant="secondary">default</Badge>}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Set as default image"
-                    title="Use this image for new machines"
-                    onClick={() => setDefault(idx)}
-                  >
-                    <StarIcon className={img.is_default ? 'fill-current' : ''} />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Remove image"
-                    disabled={(form?.images.length ?? 0) <= 1}
-                    onClick={() => removeImage(idx)}
-                  >
-                    <Trash2Icon />
-                  </Button>
-                </div>
-                <Input
-                  value={img.nfs_root}
-                  onChange={(e) => updateImage(idx, { nfs_root: e.target.value })}
-                  placeholder={`192.168.250.4:/srv/nfs/${img.os_name}-${img.version}`}
-                  className="font-mono"
-                  aria-label="NFS export"
-                />
+
+          <div className="rounded-lg border overflow-hidden bg-card">
+            <Table>
+              <TableHeader className="bg-muted/40">
+                <TableRow>
+                  <TableHead className="w-[250px]">OS & Version</TableHead>
+                  <TableHead>NFS Root Export</TableHead>
+                  <TableHead className="w-[190px]">Boot Assets</TableHead>
+                  <TableHead className="w-[80px] text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {form?.images.map((img, idx) => {
+                  const key = `${img.os_name}/${img.version}`
+                  const provider = providers.find((p) => p.name === img.os_name)
+                  const osOptions = osOptionsFor(providers, img)
+                  const versionOptions = versionOptionsFor(provider, img)
+                  const asset = settings?.assets?.find(
+                    (a) => a.os_name === img.os_name && a.version === img.version
+                  )
+                  const phase: AssetPhase = asset?.phase ?? 'idle'
+                  const badge = PHASE_BADGES[phase]
+                  const PhaseIcon = PHASE_ICONS[phase]
+                  const busy = busyKey === key
+                  const canFetch = phase === 'idle' || phase === 'failed'
+
+                  return (
+                    <TableRow key={idx}>
+                      <TableCell className="align-middle py-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Select
+                            items={osOptions}
+                            value={img.os_name}
+                            onValueChange={(value) => {
+                              if (typeof value !== 'string') return
+                              const picked = providers.find((p) => p.name === value)
+                              updateImage(idx, {
+                                os_name: value,
+                                version: picked?.versions[0] ?? img.version,
+                              })
+                            }}
+                          >
+                            <SelectTrigger className="w-32 h-8 text-xs" aria-label="OS">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {osOptions.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                  disabled={option.disabled}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            items={versionOptions}
+                            value={img.version}
+                            onValueChange={(value) => {
+                              if (typeof value === 'string') updateImage(idx, { version: value })
+                            }}
+                          >
+                            <SelectTrigger className="w-24 h-8 text-xs" aria-label="Version">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {versionOptions.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                  disabled={option.disabled}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-middle py-3">
+                        <Input
+                          value={img.nfs_root}
+                          onChange={(e) => updateImage(idx, { nfs_root: e.target.value })}
+                          placeholder={`192.168.250.4:/srv/nfs/${img.os_name}-${img.version}`}
+                          className="font-mono text-xs sm:text-sm h-8"
+                          aria-label="NFS export"
+                        />
+                      </TableCell>
+                      <TableCell className="align-middle py-3">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={badge.variant} className={badge.className}>
+                            <PhaseIcon data-icon="inline-start" className="size-3" />
+                            {phase}
+                          </Badge>
+                          {canFetch && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs px-2"
+                              onClick={() => onFetch(img)}
+                              disabled={busy}
+                              title="Fetch installer assets (kernel & initrd)"
+                            >
+                              {busy ? (
+                                <Loader2Icon className="size-3 animate-spin" />
+                              ) : (
+                                <CloudDownloadIcon className="size-3" />
+                              )}
+                              Fetch
+                            </Button>
+                          )}
+                        </div>
+                        {(phase === 'downloading' || phase === 'extracting') && (
+                          <div className="mt-1.5 w-32">
+                            <Progress value={asset?.percent ?? 0} className="h-1.5" />
+                            <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                              <span>{phase}</span>
+                              <span>{asset?.percent ?? 0}%</span>
+                            </div>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right align-middle py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Set as default image"
+                            title={
+                              img.is_default
+                                ? 'Default image for new machines'
+                                : 'Set as default image'
+                            }
+                            onClick={() => setDefault(idx)}
+                          >
+                            <StarIcon
+                              className={
+                                img.is_default
+                                  ? 'fill-amber-400 text-amber-500'
+                                  : 'text-muted-foreground'
+                              }
+                            />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Remove image"
+                            disabled={(form?.images.length ?? 0) <= 1}
+                            onClick={() => removeImage(idx)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        <div className="grid gap-2.5 rounded-lg border p-3.5 bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="settings-base-url" className="text-sm font-semibold">
+                  iPXE Server URL
+                </Label>
+                <Badge variant={form?.base_url_override?.trim() ? 'default' : 'secondary'}>
+                  {form?.base_url_override?.trim() ? 'Manual override' : 'Auto-detect'}
+                </Badge>
               </div>
-            )
-          })}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="justify-self-start"
-            onClick={addImage}
-            disabled={!form || providers.length === 0}
-          >
-            <PlusIcon data-icon="inline-start" />
-            Add image
-          </Button>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                The HTTP address client machines use to download boot scripts and installer assets.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {browserOrigin && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setForm((f) => (f ? { ...f, base_url_override: browserOrigin } : f))
+                  }
+                  disabled={form?.base_url_override === browserOrigin}
+                  title={`Set to current browser address (${browserOrigin})`}
+                >
+                  <LaptopIcon data-icon="inline-start" />
+                  Use browser address
+                </Button>
+              )}
+              {form?.base_url_override && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setForm((f) => (f ? { ...f, base_url_override: '' } : f))}
+                  title="Clear override to auto-detect from client request Host"
+                >
+                  <RotateCcwIcon data-icon="inline-start" />
+                  Reset to auto
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-1">
+            <Input
+              id="settings-base-url"
+              value={form?.base_url_override ?? ''}
+              onChange={(e) =>
+                setForm((f) => (f ? { ...f, base_url_override: e.target.value } : f))
+              }
+              placeholder={
+                browserOrigin
+                  ? `e.g. ${browserOrigin} (leave empty for auto-detect)`
+                  : 'http://192.168.250.x:4793 (empty = auto-detect)'
+              }
+              className={`font-mono text-sm ${baseUrlError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+            />
+            <div className="flex items-center justify-between text-xs">
+              {baseUrlError ? (
+                <span className="text-destructive font-medium">{baseUrlError}</span>
+              ) : form?.base_url_override?.trim() ? (
+                <span className="text-muted-foreground">
+                  Client machines will connect strictly to this URL.
+                </span>
+              ) : (
+                <span className="text-muted-foreground">
+                  Auto-detect mode: server dynamically resolves from the client request Host header
+                  {browserOrigin ? ` (currently ${browserOrigin})` : ''}.
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="settings-base-url">Base URL override</Label>
-          <Input
-            id="settings-base-url"
-            value={form?.base_url_override ?? ''}
-            onChange={(e) => setForm((f) => (f ? { ...f, base_url_override: e.target.value } : f))}
-            placeholder="http://192.168.250.x:8080 (empty = use request Host)"
-            className="font-mono"
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="settings-ssh-keys">Global SSH authorized keys (one per line)</Label>
-          <Textarea
-            id="settings-ssh-keys"
-            value={form?.ssh_keys_default ?? ''}
-            onChange={(e) => setForm((f) => (f ? { ...f, ssh_keys_default: e.target.value } : f))}
-            rows={3}
-            placeholder="ssh-ed25519 AAAA... user@host"
-            className="font-mono"
-          />
-          <p className="text-xs text-muted-foreground">
-            Machines with no keys of their own inherit these. Type &quot;auto&quot; to clear them;
-            leaving the field empty keeps the current value.
-          </p>
+
+        <div className="grid gap-2.5 rounded-lg border p-3.5 bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="settings-ssh-keys" className="text-sm font-semibold">
+                  Global SSH authorized keys
+                </Label>
+                <Badge variant={parsedSsh.keys.length > 0 ? 'secondary' : 'outline'}>
+                  <KeyRoundIcon data-icon="inline-start" className="size-3" />
+                  {parsedSsh.keys.length} {parsedSsh.keys.length === 1 ? 'key' : 'keys'}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Public keys injected into newly installed machines. Per-machine keys can override these.
+              </p>
+            </div>
+
+            {form?.ssh_keys_default?.trim() && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setForm((f) => (f ? { ...f, ssh_keys_default: '' } : f))}
+                title="Clear all global SSH keys"
+              >
+                <Trash2Icon data-icon="inline-start" />
+                Clear keys
+              </Button>
+            )}
+          </div>
+
+          {parsedSsh.keys.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {parsedSsh.keys.map((k, i) => (
+                <Badge
+                  key={i}
+                  variant="outline"
+                  className="font-mono text-xs font-normal py-0.5 px-2 bg-muted/30"
+                >
+                  <span className="font-semibold text-primary mr-1.5">{k.type}</span>
+                  <span className="text-muted-foreground truncate max-w-[240px]">{k.comment}</span>
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          <div className="grid gap-1">
+            <Textarea
+              id="settings-ssh-keys"
+              value={form?.ssh_keys_default ?? ''}
+              onChange={(e) =>
+                setForm((f) => (f ? { ...f, ssh_keys_default: e.target.value } : f))
+              }
+              rows={Math.min(6, Math.max(3, (form?.ssh_keys_default ?? '').split('\n').length))}
+              placeholder="Paste public keys here (one per line, e.g. ssh-ed25519 AAAA... user@host)"
+              className={`font-mono text-xs ${parsedSsh.error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+            />
+            <div className="flex items-center justify-between text-xs">
+              {parsedSsh.error ? (
+                <span className="text-destructive font-medium">{parsedSsh.error}</span>
+              ) : form?.ssh_keys_default?.trim() ? (
+                <span className="text-muted-foreground">
+                  One key per line. Comment at the end of each key identifies the owner.
+                </span>
+              ) : (
+                <span className="text-muted-foreground">
+                  No default keys configured. Leave empty if you don&apos;t want default SSH access.
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </CardContent>
-      <CardFooter className="justify-end">
-        <Button onClick={onSave} disabled={saving || !form}>
-          {saving ? (
-            <Loader2Icon data-icon="inline-start" className="animate-spin" />
+      <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/15 px-6 py-4">
+        <div className="flex items-center gap-2 text-xs">
+          {isDirty ? (
+            <span className="flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
+              <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+              You have unsaved changes
+            </span>
           ) : (
-            <SaveIcon data-icon="inline-start" />
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <CircleCheckIcon className="size-3.5 text-green-600 dark:text-green-400" />
+              All settings are up to date
+            </span>
           )}
-          Save settings
-        </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isDirty && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 pl-3.5 pr-4 gap-2 text-sm inline-flex items-center justify-center"
+              onClick={onDiscard}
+              disabled={saving}
+            >
+              <RotateCcwIcon className="size-4 shrink-0" />
+              <span className="leading-none">Discard</span>
+            </Button>
+          )}
+          <Button
+            onClick={onSave}
+            disabled={saving || !form || !isDirty}
+            className="h-10 pl-3.5 pr-4.5 gap-2 text-sm font-semibold shadow-sm inline-flex items-center justify-center text-center"
+          >
+            {saving ? (
+              <Loader2Icon className="size-4 animate-spin shrink-0" />
+            ) : (
+              <SaveIcon className="size-4 shrink-0" />
+            )}
+            <span className="leading-none">Save changes</span>
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   )

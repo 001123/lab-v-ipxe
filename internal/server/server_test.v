@@ -1,10 +1,10 @@
 module server
 
-import config
+import internal.config
 import json2
 import net.http
 import os
-import store
+import internal.store
 import time
 import veb
 
@@ -549,7 +549,7 @@ fn test_boundary_validators_reject_injection() {
 	if _ := validate_nfs_root('10.0.0.9:/srv/nfs\nx') {
 		assert false, 'newline in nfs_root must be rejected'
 	}
-	assert is_valid_base_url('http://192.168.250.10:8080')
+	assert is_valid_base_url('http://192.168.250.10:4793')
 	assert is_valid_base_url('https://boot.example.com')
 	assert !is_valid_base_url('not a url')
 	assert !is_valid_base_url('http://host;reboot')

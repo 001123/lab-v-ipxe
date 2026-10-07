@@ -1,13 +1,13 @@
 module ubuntu
 
-import core
+import internal.boot
 import os
-import sha512crypt
+import internal.lib.sha512crypt
 import time
 
-fn sample_req() core.BootRequest {
-	return core.BootRequest{
-		base_url:       'http://192.168.250.10:8080'
+fn sample_req() boot.BootRequest {
+	return boot.BootRequest{
+		base_url:       'http://192.168.250.10:4793'
 		mac:            'BC:24:11:00:24:99'
 		mac_key:        'bc2411002499'
 		hostname:       'vm-test'
@@ -29,13 +29,13 @@ fn test_nfs_install_script() {
 	u := new(new_assets('/nonexistent-cache', '', '', false))
 	s := u.install_script(sample_req())!
 	assert s.starts_with('#!ipxe')
-	assert s.contains('kernel http://192.168.250.10:8080/assets/ubuntu/24.04.5/vmlinuz')
+	assert s.contains('kernel http://192.168.250.10:4793/assets/ubuntu/24.04.5/vmlinuz')
 	assert s.contains('root=/dev/ram0 ramdisk_size=3500000 boot=casper')
 	assert s.contains('netboot=nfs nfsroot=192.168.250.4:/srv/nfs/ubuntu-24.04.5')
 	assert s.contains('ip=dhcp autoinstall')
-	assert s.contains('ds=nocloud-net;s=http://192.168.250.10:8080/os/ubuntu/24.04.5/BC:24:11:00:24:99/')
+	assert s.contains('ds=nocloud-net;s=http://192.168.250.10:4793/os/ubuntu/24.04.5/BC:24:11:00:24:99/')
 	assert s.contains('cloud-config-url=/dev/null')
-	assert s.contains('initrd http://192.168.250.10:8080/assets/ubuntu/24.04.5/initrd')
+	assert s.contains('initrd http://192.168.250.10:4793/assets/ubuntu/24.04.5/initrd')
 	assert s.ends_with('boot\n')
 	// the kernel line must not carry initrd=
 	kernel_lines := s.split_into_lines().filter(it.starts_with('kernel'))
@@ -70,7 +70,7 @@ fn test_user_data_zfs_defaults() {
 	assert ud.contains('/etc/sudoers.d/90-lab-nopasswd')
 	assert ud.contains('systemctl enable qemu-guest-agent')
 	assert ud.contains('mac=BC:24:11:00:24:99&hostname=vm-test')
-	assert ud.contains('http://192.168.250.10:8080/api/machines/installed')
+	assert ud.contains('http://192.168.250.10:4793/api/machines/installed')
 }
 
 fn test_user_data_custom_password_direct_layout_no_keys() {
@@ -162,9 +162,9 @@ fn test_nfs_install_script_pinned_version() {
 	req.os_version = '26.04.1'
 	req.nfs_root = '192.168.250.4:/srv/nfs/ubuntu-26.04.1'
 	s := u.install_script(req)!
-	assert s.contains('kernel http://192.168.250.10:8080/assets/ubuntu/26.04.1/vmlinuz')
+	assert s.contains('kernel http://192.168.250.10:4793/assets/ubuntu/26.04.1/vmlinuz')
 	assert s.contains('netboot=nfs nfsroot=192.168.250.4:/srv/nfs/ubuntu-26.04.1')
-	assert s.contains('initrd http://192.168.250.10:8080/assets/ubuntu/26.04.1/initrd')
+	assert s.contains('initrd http://192.168.250.10:4793/assets/ubuntu/26.04.1/initrd')
 }
 
 fn test_pick_iso_filename() {

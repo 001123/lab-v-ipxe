@@ -1,6 +1,6 @@
-module core
+module boot
 
-import store
+import internal.store
 
 // BootAction is what /boot.ipxe should answer with for a given machine state.
 pub enum BootAction {

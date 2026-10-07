@@ -1,6 +1,6 @@
 module ubuntu
 
-import core
+import internal.boot
 
 pub struct Ubuntu {
 pub mut:
@@ -53,21 +53,21 @@ fn (u &Ubuntu) supported_series() []string {
 	return out
 }
 
-pub fn (u &Ubuntu) assets_ready(req core.BootRequest) bool {
+pub fn (u &Ubuntu) assets_ready(req boot.BootRequest) bool {
 	return u.assets.ready(req.os_version)
 }
 
-pub fn (u &Ubuntu) install_script(req core.BootRequest) !string {
+pub fn (u &Ubuntu) install_script(req boot.BootRequest) !string {
 	if req.boot_mode == .http {
 		return error('boot_mode "http" (netboot=url) is not implemented yet; MVP boots via NFS on Proxmox')
 	}
 	return nfs_install_script(req)
 }
 
-pub fn (u &Ubuntu) user_data(req core.BootRequest) !string {
+pub fn (u &Ubuntu) user_data(req boot.BootRequest) !string {
 	return render_user_data(req)
 }
 
-pub fn (u &Ubuntu) meta_data(req core.BootRequest) !string {
+pub fn (u &Ubuntu) meta_data(req boot.BootRequest) !string {
 	return render_meta_data(req)
 }

@@ -1,9 +1,9 @@
 module server
 
-import dirs
+import internal.config
 import json2
-import providers.ubuntu
-import store
+import internal.providers.ubuntu
+import internal.store
 import veb
 
 pub struct AssetStatusDto {
@@ -35,6 +35,7 @@ pub:
 	providers         []ProviderDto
 	extractors        []string
 	assets            []AssetStatusDto
+	system            SystemInfo
 }
 
 pub struct SettingsPayload {
@@ -81,13 +82,14 @@ fn (mut app App) build_settings_res() SettingsRes {
 	}
 	return SettingsRes{
 		data_dir:          app.cfg.data_dir
-		db_path:           dirs.db_path(app.cfg.data_dir)
+		db_path:           config.db_path(app.cfg.data_dir)
 		base_url_override: app.st.setting_or(store.setting_base_url, app.cfg.base_url)
 		ssh_keys_default:  app.st.setting_or(store.setting_ssh_keys, '')
 		os_images:         images
 		providers:         providers
 		extractors:        ubuntu.available_extractors()
 		assets:            assets
+		system:            app.get_system_info()
 	}
 }
 
@@ -217,3 +219,9 @@ pub fn (mut app App) assets_fetch(mut ctx Context) veb.Result {
 	}
 	return ctx.json(app.build_settings_res())
 }
+
+@['/api/system/info'; get]
+pub fn (app &App) system_info_endpoint(mut ctx Context) veb.Result {
+	return ctx.json(app.get_system_info())
+}
+

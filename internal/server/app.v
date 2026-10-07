@@ -1,11 +1,11 @@
 module server
 
-import config
+import internal.config
 import db.sqlite
-import dirs
-import providers
-import providers.ubuntu
-import store
+import internal.providers
+import internal.providers.ubuntu
+import internal.store
+import time
 import veb
 import veb.auth
 
@@ -23,6 +23,7 @@ pub mut:
 	auth         auth.Auth[sqlite.DB]
 	assets       &ubuntu.AssetManager
 	os_providers map[string]providers.OSProvider
+	start_time   i64
 	// embedded SPA, materialized once at startup (see routes_spa.v)
 	spa_files   map[string]string
 	spa_enabled bool
@@ -34,12 +35,13 @@ pub fn new_app(cfg config.Config, st &store.Store) &App {
 	st.seed_os_images(config.default_nfs_root, config.default_ubuntu_version) or {
 		eprintln('[app] os image catalog seed failed: ${err.msg()}')
 	}
-	assets := ubuntu.new_assets(dirs.assets_dir(cfg.data_dir), cfg.ubuntu_assets_dir, cfg.ubuntu_iso,
+	assets := ubuntu.new_assets(config.assets_dir(cfg.data_dir), cfg.ubuntu_assets_dir, cfg.ubuntu_iso,
 		cfg.keep_iso)
 	mut app := &App{
 		cfg:          cfg
 		st:           st
 		assets:       assets
+		start_time:   time.now().unix()
 		os_providers: {
 			'ubuntu': providers.OSProvider(ubuntu.new(assets))
 		}

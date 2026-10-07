@@ -72,6 +72,23 @@ export interface ProviderInfo {
   versions: string[]
 }
 
+export interface ProcessMemInfo {
+  name: string
+  pid: number
+  memory_bytes: number
+  mode: string
+  port?: number
+}
+
+export interface SystemInfo {
+  backend: ProcessMemInfo
+  frontend: ProcessMemInfo
+  os_type: string
+  uptime_sec: number
+  unified_process?: boolean
+  port?: number
+}
+
 export interface SettingsRes {
   data_dir: string
   db_path: string
@@ -81,6 +98,7 @@ export interface SettingsRes {
   providers: ProviderInfo[]
   extractors: string[]
   assets: AssetStatus[]
+  system?: SystemInfo
 }
 
 export interface SettingsPayload {
