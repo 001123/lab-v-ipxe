@@ -30,7 +30,7 @@ jobs:
       commit_sha: ${{ steps.vars.outputs.commit_sha }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -88,7 +88,7 @@ jobs:
           echo "commit_sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: 'npm'
@@ -103,7 +103,7 @@ jobs:
         run: npm run build
 
       - name: Upload frontend assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: web/out
@@ -125,12 +125,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.build-frontend.outputs.commit_sha }}
 
       - name: Download frontend assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: frontend-dist
           path: web/out
@@ -142,7 +142,7 @@ jobs:
           sudo apt-get install -y pkg-config libsqlite3-dev libssl-dev
 
       - name: Setup V
-        uses: vlang/setup-v@v1
+        uses: vlang/setup-v@v1.7
         with:
           check-latest: true
 
@@ -185,7 +185,7 @@ jobs:
           fi
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binary-${{ matrix.target }}
           path: |
@@ -201,7 +201,7 @@ jobs:
       contents: write
     steps:
       - name: Download all binary artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: binary-*
           path: release-assets
@@ -215,7 +215,7 @@ jobs:
           ls -la
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.build-frontend.outputs.tag }}
           files: release-assets/*
