@@ -149,3 +149,8 @@ run = "cd docs && npm run dev -- --port 4795"
 [tasks."docs:build"]
 description = "Build static docs"
 run = "cd docs && npm run build"
+
+[tasks."deploy:lxc"]
+description = "Download latest release and deploy to Proxmox LXC 9200 test container"
+run = "scripts/proxmox/deploy-lxc-test.sh"
+
