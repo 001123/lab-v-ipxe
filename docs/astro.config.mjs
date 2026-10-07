@@ -4,6 +4,7 @@ import starlight from '@astrojs/starlight';
 
 export default defineConfig({
   site: 'https://001123.github.io',
+  base: '/lab-v-ipxe',
   integrations: [
     starlight({
       title: 'iPXE ZTP Docs',

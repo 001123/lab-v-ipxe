@@ -224,4 +224,3 @@ pub fn (mut app App) assets_fetch(mut ctx Context) veb.Result {
 pub fn (app &App) system_info_endpoint(mut ctx Context) veb.Result {
 	return ctx.json(app.get_system_info())
 }
-

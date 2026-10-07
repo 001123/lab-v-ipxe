@@ -58,7 +58,11 @@ fn (app &App) get_system_info() SystemInfo {
 		name:         if is_unified { 'Backend & App Server' } else { 'Backend (V / veb)' }
 		pid:          os.getpid()
 		memory_bytes: be_mem
-		mode:         if is_unified { 'Single binary (port :${be_port})' } else { 'Dev server (port :${be_port})' }
+		mode:         if is_unified {
+			'Single binary (port :${be_port})'
+		} else {
+			'Dev server (port :${be_port})'
+		}
 		port:         be_port
 	}
 

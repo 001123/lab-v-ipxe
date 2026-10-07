@@ -2,6 +2,7 @@
 import logo from '../assets/logo.svg';
 import ztpWorkflow from '../assets/ztp-workflow.svg';
 import '../styles/custom.css';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <!doctype html>
@@ -10,9 +11,9 @@ import '../styles/custom.css';
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>iPXE ZTP Docs — Select Language / Chọn Ngôn Ngữ</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
     <meta name="description" content="iPXE ZTP Documentation - Automated Zero Touch Provisioning for Bare Metal & Virtual Machines" />
-    <script src="/scripts/cursor-effects.js" defer></script>
+    <script src={`${base}/scripts/cursor-effects.js`} defer></script>
     <style>
       :root {
         --bg-color: #09090b;
@@ -391,7 +392,7 @@ import '../styles/custom.css';
       </p>
 
       <div class="cards-grid">
-        <a href="/en/" class="lang-card">
+        <a href={`${base}/en/`} class="lang-card">
           <div class="lang-tag">EN</div>
           <div class="lang-title">English</div>
           <div class="lang-sub">System architecture, network boot lifecycle, storage layouts, and REST API specification.</div>
@@ -401,7 +402,7 @@ import '../styles/custom.css';
           </div>
         </a>
 
-        <a href="/vi/" class="lang-card">
+        <a href={`${base}/vi/`} class="lang-card">
           <div class="lang-tag">VI</div>
           <div class="lang-title">Tiếng Việt</div>
           <div class="lang-sub">Tổng quan hệ thống, quy trình ZTP, cấu hình router DHCP và tài liệu tham chiếu API.</div>
@@ -419,7 +420,7 @@ import '../styles/custom.css';
         <span class="separator">•</span>
         <span>v0.0.1</span>
         <span class="separator">•</span>
-        <a href="/en/getting-started/quickstart/">
+        <a href={`${base}/en/getting-started/quickstart/`}>
           Quickstart
         </a>
       </footer>
