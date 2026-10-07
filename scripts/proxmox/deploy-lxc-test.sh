@@ -281,8 +281,8 @@ if [[ "${CONTAINER_EXISTS}" -eq 0 ]]; then
     i=$((i + 1))
   done
 
-  echo "==> Installing runtime dependencies (libsqlite3-0, ca-certificates, curl)..."
-  pve_ssh "pct exec ${VMID} -- bash -c 'DEBIAN_FRONTEND=noninteractive apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libsqlite3-0 ca-certificates curl'"
+  echo "==> Installing runtime dependencies (libsqlite3-0, ca-certificates, curl, xorriso, p7zip-full, libarchive-tools)..."
+  pve_ssh "pct exec ${VMID} -- bash -c 'DEBIAN_FRONTEND=noninteractive apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libsqlite3-0 ca-certificates curl xorriso p7zip-full libarchive-tools'"
 else
   # Ensure existing container is running
   CURRENT_STATUS="$(pve_ssh "pct status ${VMID}" | awk '{print $2}')"
@@ -292,10 +292,10 @@ else
     sleep 3
   fi
 
-  # Check if libsqlite3 is installed
-  if ! pve_ssh "pct exec ${VMID} -- dpkg -s libsqlite3-0 >/dev/null 2>&1"; then
-    echo "==> Installing missing runtime dependency libsqlite3-0..."
-    pve_ssh "pct exec ${VMID} -- bash -c 'DEBIAN_FRONTEND=noninteractive apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libsqlite3-0 ca-certificates curl'"
+  # Check if libsqlite3 or xorriso is installed
+  if ! pve_ssh "pct exec ${VMID} -- dpkg -s libsqlite3-0 xorriso >/dev/null 2>&1"; then
+    echo "==> Installing missing runtime dependencies (libsqlite3-0, xorriso, p7zip-full, libarchive-tools)..."
+    pve_ssh "pct exec ${VMID} -- bash -c 'DEBIAN_FRONTEND=noninteractive apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libsqlite3-0 ca-certificates curl xorriso p7zip-full libarchive-tools'"
   fi
 fi
 

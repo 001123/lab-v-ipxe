@@ -418,7 +418,7 @@ export default function AboutPage() {
                 <div className="absolute -left-[5px] top-1.5 size-2.5 rounded-full border-2 border-primary bg-background" />
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm sm:text-base font-semibold text-foreground">v0.1.0</span>
+                  <span className="font-mono text-sm sm:text-base font-semibold text-foreground">v0.0.1</span>
                   <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] sm:text-[11px]">
                     Current Release
                   </Badge>
