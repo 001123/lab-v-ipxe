@@ -1,0 +1,430 @@
+---
+import logo from '../assets/logo.svg';
+import ztpWorkflow from '../assets/ztp-workflow.svg';
+import '../styles/custom.css';
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>iPXE ZTP Docs — Select Language / Chọn Ngôn Ngữ</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="iPXE ZTP Documentation - Automated Zero Touch Provisioning for Bare Metal & Virtual Machines" />
+    <script src="/scripts/cursor-effects.js" defer></script>
+    <style>
+      :root {
+        --bg-color: #09090b;
+        --card-bg: #121215;
+        --card-border: #27272a;
+        --card-border-hover: #52525b;
+        --text-primary: #ffffff;
+        --text-secondary: #e4e4e7;
+        --text-muted: #a1a1aa;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 2.75rem 1.5rem 4rem;
+        position: relative;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Modern High-Tech Grid & Spotlight Pattern */
+      .bg-grid-pattern {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-size: 32px 32px;
+        background-image: 
+          linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+        mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 25%, transparent 85%);
+        -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 25%, transparent 85%);
+      }
+
+      .bg-glow-cone {
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 1100px;
+        height: 520px;
+        z-index: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse 65% 50% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 70%);
+      }
+
+      .container {
+        width: 100%;
+        max-width: 760px;
+        text-align: center;
+        position: relative;
+        z-index: 1;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      /* Hero Illustration on Top */
+      .hero-image-top {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        margin-bottom: 1.75rem;
+      }
+
+      .illustration-card {
+        position: relative;
+        width: 100%;
+        max-width: 660px;
+        background: #111114;
+        border: 1px solid #27272a;
+        border-radius: 1.25rem;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(255, 255, 255, 0.03);
+        overflow: hidden;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+      }
+
+      .illustration-card:hover {
+        border-color: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.9), 0 0 45px rgba(255, 255, 255, 0.05);
+        transform: translateY(-2px);
+      }
+
+      .illustration-card::before {
+        content: '';
+        position: absolute;
+        top: -20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        height: 60%;
+        background: radial-gradient(ellipse 65% 50% at 50% 25%, rgba(255, 255, 255, 0.07), transparent 70%);
+        pointer-events: none;
+      }
+
+      .hero-illustration {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .header-meta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .logo-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        background: #121215;
+        border: 1px solid #27272a;
+        border-radius: 0.75rem;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.04);
+      }
+
+      .logo-wrapper img {
+        width: 24px;
+        height: 24px;
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 0.35rem 0.85rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+      }
+
+      .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #ffffff;
+        box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+      }
+
+      h1 {
+        font-size: clamp(2rem, 4vw, 2.5rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(180deg, #ffffff 40%, #a1a1aa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      p.tagline {
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        line-height: 1.55;
+        max-width: 520px;
+        margin: 0 auto 2rem;
+      }
+
+      .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 2.5rem;
+        width: 100%;
+        max-width: 660px;
+        margin-inline: auto;
+      }
+
+      .lang-card {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        padding: 1.5rem;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 1rem;
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                    background-color 0.25s ease,
+                    box-shadow 0.25s ease;
+      }
+
+      /* Reactive mouse spotlight inside card */
+      .lang-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(
+          350px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+          rgba(255, 255, 255, 0.06),
+          transparent 70%
+        );
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+      }
+
+      /* Dynamic border shimmer following the cursor */
+      .lang-card::after {
+        content: '';
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        padding: 1px;
+        background: radial-gradient(
+          240px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+          rgba(255, 255, 255, 0.4),
+          transparent 70%
+        );
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+      }
+
+      .lang-card:hover::before,
+      .lang-card:hover::after {
+        opacity: 1;
+      }
+
+      .lang-card:hover {
+        transform: translateY(-2px);
+        background: #151518;
+        box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 255, 255, 0.03);
+      }
+
+      .lang-tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        width: 32px;
+        height: 32px;
+        border-radius: 0.5rem;
+        background: #1c1c22;
+        border: 1px solid #3f3f46;
+        color: #ffffff;
+        margin-bottom: 0.85rem;
+      }
+
+      .lang-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.35rem;
+        color: #ffffff;
+      }
+
+      .lang-sub {
+        font-size: 0.825rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-bottom: 1.25rem;
+        flex-grow: 1;
+      }
+
+      .action-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.45rem 0.85rem;
+        border-radius: 0.5rem;
+        background: #1c1c22;
+        border: 1px solid #3f3f46;
+        color: #ffffff;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .lang-card:hover .action-pill {
+        background: #ffffff;
+        border-color: #ffffff;
+        color: #09090b;
+        transform: translateX(2px);
+      }
+
+      .arrow-icon {
+        transition: transform 0.2s;
+      }
+
+      .lang-card:hover .arrow-icon {
+        transform: translateX(2px);
+      }
+
+      footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1.25rem;
+        font-size: 0.85rem;
+        color: #71717a;
+      }
+
+      footer a {
+        color: #a1a1aa;
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+
+      footer a:hover {
+        color: #ffffff;
+      }
+
+      .separator {
+        color: #3f3f46;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid-pattern" aria-hidden="true"></div>
+    <div class="bg-glow-cone" aria-hidden="true"></div>
+    <main class="container">
+      <div class="hero-image-top">
+        <div class="illustration-card">
+          <img
+            src={ztpWorkflow.src}
+            alt="iPXE ZTP Automated Provisioning Workflow Diagram"
+            class="hero-illustration"
+            width="520"
+            height="350"
+          />
+        </div>
+      </div>
+
+      <div class="header-meta">
+        <div class="logo-wrapper">
+          <img src={logo.src} alt="iPXE ZTP Logo" width="24" height="24" />
+        </div>
+        <div class="badge">
+          <span class="badge-dot"></span>
+          <span>Single Binary ZTP Server</span>
+        </div>
+      </div>
+
+      <h1>iPXE ZTP Documentation</h1>
+      <p class="tagline">
+        Select your language to explore the official documentation.<br />
+        Chọn ngôn ngữ để khám phá tài liệu kỹ thuật.
+      </p>
+
+      <div class="cards-grid">
+        <a href="/en/" class="lang-card">
+          <div class="lang-tag">EN</div>
+          <div class="lang-title">English</div>
+          <div class="lang-sub">System architecture, network boot lifecycle, storage layouts, and REST API specification.</div>
+          <div class="action-pill">
+            <span>Documentation</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+
+        <a href="/vi/" class="lang-card">
+          <div class="lang-tag">VI</div>
+          <div class="lang-title">Tiếng Việt</div>
+          <div class="lang-sub">Tổng quan hệ thống, quy trình ZTP, cấu hình router DHCP và tài liệu tham chiếu API.</div>
+          <div class="action-pill">
+            <span>Xem Tài Liệu</span>
+            <span class="arrow-icon">→</span>
+          </div>
+        </a>
+      </div>
+
+      <footer>
+        <a href="https://github.com/001123/lab-v-ipxe" target="_blank" rel="noopener noreferrer">
+          GitHub
+        </a>
+        <span class="separator">•</span>
+        <span>v0.0.1</span>
+        <span class="separator">•</span>
+        <a href="/en/getting-started/quickstart/">
+          Quickstart
+        </a>
+      </footer>
+    </main>
+  </body>
+</html>
+
+

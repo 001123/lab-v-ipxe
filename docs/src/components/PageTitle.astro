@@ -1,0 +1,164 @@
+---
+const PAGE_TITLE_ID = '_top';
+
+const route = Astro.locals.starlightRoute;
+const title = route.entry.data.title;
+
+// Find section category label from sidebar
+let breadcrumbLabel = '';
+function findGroup(entries: any[]): string | null {
+  if (!entries) return null;
+  for (const entry of entries) {
+    if (entry.type === 'group') {
+      if (entry.entries && entry.entries.some((e: any) => e.isCurrent || (e.entries && findGroup([e])))) {
+        return entry.label;
+      }
+    }
+  }
+  return null;
+}
+
+if (route.sidebar) {
+  breadcrumbLabel = findGroup(route.sidebar) || '';
+}
+---
+
+<div class="page-header-wrapper">
+  <div class="page-meta-bar">
+    {breadcrumbLabel ? (
+      <div class="breadcrumb-nav">
+        <span class="breadcrumb-label">{breadcrumbLabel}</span>
+        <span class="breadcrumb-sep">&gt;</span>
+      </div>
+    ) : (
+      <div class="breadcrumb-nav">
+        <span class="breadcrumb-label">DOCS</span>
+        <span class="breadcrumb-sep">&gt;</span>
+      </div>
+    )}
+    <button id="copy-page-btn" class="copy-page-btn" type="button" title="Copy page link">
+      <svg class="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+      </svg>
+      <span class="copy-text">Copy link</span>
+    </button>
+  </div>
+  <h1 id={PAGE_TITLE_ID}>{title}</h1>
+</div>
+
+<script>
+  function setupCopyButton() {
+    const btn = document.getElementById('copy-page-btn');
+    if (!btn || btn.dataset.bound === 'true') return;
+    btn.dataset.bound = 'true';
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        const text = btn.querySelector('.copy-text');
+        if (text) {
+          const original = text.textContent;
+          text.textContent = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            text.textContent = original;
+            btn.classList.remove('copied');
+          }, 2000);
+        }
+      } catch (err) {
+        console.error('Failed to copy', err);
+      }
+    });
+  }
+
+  function setupTocTopHighlight() {
+    const checkTop = () => {
+      if (window.scrollY < 80) {
+        const topLink = document.querySelector('starlight-toc a[href="#_top"]');
+        const current = document.querySelector('starlight-toc a[aria-current="true"]');
+        if (topLink && current !== topLink) {
+          if (current) current.removeAttribute('aria-current');
+          topLink.setAttribute('aria-current', 'true');
+        }
+      }
+    };
+    setTimeout(checkTop, 100);
+    window.addEventListener('scroll', checkTop, { passive: true });
+  }
+
+  setupCopyButton();
+  setupTocTopHighlight();
+  document.addEventListener('astro:page-load', () => {
+    setupCopyButton();
+    setupTocTopHighlight();
+  });
+</script>
+
+<style>
+  .page-header-wrapper {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.25rem;
+    gap: 0.65rem;
+  }
+
+  .page-meta-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .breadcrumb-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sl-color-gray-3);
+  }
+
+  .breadcrumb-sep {
+    color: var(--sl-color-gray-4);
+    font-size: 0.75rem;
+  }
+
+  .copy-page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--sl-color-gray-3);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 6px;
+    padding: 0.25rem 0.55rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .copy-page-btn:hover {
+    color: var(--sl-color-white);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--sl-color-gray-4);
+  }
+
+  .copy-page-btn.copied {
+    color: var(--sl-color-white);
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  h1 {
+    font-size: clamp(2.2rem, 3.8vw, 2.75rem) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.035em !important;
+    line-height: 1.18 !important;
+    margin: 0 !important;
+    color: var(--sl-color-white);
+  }
+</style>

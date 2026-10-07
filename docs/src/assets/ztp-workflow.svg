@@ -1,0 +1,400 @@
+<svg
+  viewBox="0 0 520 350"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-label="iPXE Zero-Touch Provisioning Diagram"
+>
+  <style>
+    @keyframes flowDash {
+      to { stroke-dashoffset: -20; }
+    }
+    @keyframes breatheGlow {
+      0%, 100% { opacity: 0.04; }
+      50% { opacity: 0.12; }
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .anim-flow {
+      animation: flowDash 1.4s linear infinite;
+    }
+    .anim-glow {
+      animation: breatheGlow 4s ease-in-out infinite;
+    }
+    .anim-pulse-fast {
+      animation: pulseDot 1.2s ease-in-out infinite;
+    }
+    .anim-pulse-slow {
+      animation: pulseDot 2s ease-in-out infinite;
+    }
+    text {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+  </style>
+
+  <defs>
+    <filter id="cardShadow" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+    <radialGradient id="systemGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  {/* Ambient background breathing glow */}
+  <circle cx="260" cy="175" r="160" fill="url(#systemGlow)" class="anim-glow" />
+
+  {/* Subtle Circuit / Grid Lines */}
+  <g stroke="#27272a" stroke-width="1" stroke-dasharray="3 3" opacity="0.6">
+    <line x1="20" y1="175" x2="205" y2="175" />
+    <line x1="260" y1="20" x2="260" y2="330" />
+  </g>
+
+  {/* Flow Connection Animated Bézier Curves */}
+  {/* Route 1: To Target 1 (Sanboot / Ready) */}
+  <path
+    d="M 205 150 C 275 150, 275 85, 350 85"
+    stroke="#71717a"
+    class="anim-flow"
+    stroke-width="2"
+    stroke-dasharray="6 4"
+    fill="none"
+  />
+  {/* Route 2: To Target 2 (Installing / Cloud-init) */}
+  <path
+    d="M 205 175 C 275 175, 275 175, 350 175"
+    stroke="#a1a1aa"
+    class="anim-flow"
+    stroke-width="2"
+    stroke-dasharray="6 4"
+    fill="none"
+  />
+  {/* Route 3: To Target 3 (Pending / MAC Discovery) */}
+  <path
+    d="M 205 200 C 275 200, 275 265, 350 265"
+    stroke="#52525b"
+    class="anim-flow"
+    stroke-width="2"
+    stroke-dasharray="6 4"
+    fill="none"
+  />
+
+  {/* Traveling Data Packets along network paths */}
+  {/* Packet 1: Route 1 */}
+  <g>
+    <animateMotion
+      path="M 205 150 C 275 150, 275 85, 350 85"
+      dur="2.4s"
+      repeatCount="indefinite"
+    />
+    <circle r="4" fill="#ffffff" />
+    <circle r="1.8" fill="#18181b" />
+  </g>
+
+  {/* Packet 2: Route 2 */}
+  <g>
+    <animateMotion
+      path="M 205 175 C 275 175, 275 175, 350 175"
+      dur="2s"
+      begin="-0.7s"
+      repeatCount="indefinite"
+    />
+    <circle r="4" fill="#ffffff" />
+    <circle r="1.8" fill="#18181b" />
+  </g>
+
+  {/* Packet 3: Route 3 */}
+  <g>
+    <animateMotion
+      path="M 205 200 C 275 200, 275 265, 350 265"
+      dur="2.8s"
+      begin="-1.3s"
+      repeatCount="indefinite"
+    />
+    <circle r="4" fill="#a1a1aa" />
+    <circle r="1.8" fill="#18181b" />
+  </g>
+
+  {/* Stream Label Badges on Connection Lines */}
+  <g transform="translate(242, 108)">
+    <rect
+      x="0"
+      y="0"
+      width="70"
+      height="18"
+      rx="9"
+      fill="#121215"
+      stroke="#27272a"
+      stroke-width="1"
+    />
+    <text
+      x="35"
+      y="12"
+      fill="#ffffff"
+      class="mono"
+      font-size="9"
+      font-weight="600"
+      text-anchor="middle"
+    >
+      boot.ipxe
+    </text>
+  </g>
+  <g transform="translate(237, 166)">
+    <rect
+      x="0"
+      y="0"
+      width="80"
+      height="18"
+      rx="9"
+      fill="#121215"
+      stroke="#27272a"
+      stroke-width="1"
+    />
+    <text
+      x="40"
+      y="12"
+      fill="#ffffff"
+      class="mono"
+      font-size="9"
+      font-weight="600"
+      text-anchor="middle"
+    >
+      cloud-init
+    </text>
+  </g>
+  <g transform="translate(244, 224)">
+    <rect
+      x="0"
+      y="0"
+      width="66"
+      height="18"
+      rx="9"
+      fill="#121215"
+      stroke="#27272a"
+      stroke-width="1"
+    />
+    <text
+      x="33"
+      y="12"
+      fill="#a1a1aa"
+      class="mono"
+      font-size="9"
+      font-weight="600"
+      text-anchor="middle"
+    >
+      opt:175
+    </text>
+  </g>
+
+  {/* Central Hub: iPXE ZTP Controller */}
+  <g transform="translate(30, 105)" filter="url(#cardShadow)">
+    {/* Hub Body */}
+    <rect
+      x="0"
+      y="0"
+      width="175"
+      height="140"
+      rx="16"
+      fill="#121215"
+      stroke="#27272a"
+      stroke-width="1.5"
+    />
+
+    {/* Server Top Header Bar */}
+    <rect
+      x="0"
+      y="0"
+      width="175"
+      height="34"
+      rx="16"
+      fill="#18181b"
+    />
+    {/* Small hack to square bottom corners of the header */}
+    <rect x="0" y="16" width="175" height="18" fill="#18181b" />
+    <line x1="0" y1="34" x2="175" y2="34" stroke="#27272a" stroke-width="1" />
+
+    <circle cx="18" cy="17" r="3.5" fill="#ffffff" class="anim-pulse-slow" />
+    <circle cx="28" cy="17" r="3.5" fill="#a1a1aa" class="anim-pulse-fast" />
+    <text
+      x="40"
+      y="21"
+      fill="#ffffff"
+      font-size="11"
+      font-weight="700"
+    >
+      iPXE ZTP
+    </text>
+    <rect
+      x="121"
+      y="8"
+      width="42"
+      height="18"
+      rx="4"
+      fill="rgba(255, 255, 255, 0.08)"
+      stroke="rgba(255, 255, 255, 0.2)"
+      stroke-width="1"
+    />
+    <text
+      x="142"
+      y="20"
+      fill="#ffffff"
+      class="mono"
+      font-size="9"
+      font-weight="600"
+      text-anchor="middle"
+    >
+      :4793
+    </text>
+
+    {/* Server Blade Rack Slots */}
+    {/* Blade 1 */}
+    <rect
+      x="12" y="44" width="151" height="24" rx="6"
+      fill="#18181b"
+      stroke="#27272a"
+      stroke-width="1"
+    />
+    <circle cx="22" cy="56" r="3" fill="#ffffff" class="anim-pulse-slow" />
+    <text x="32" y="59" fill="#a1a1aa" class="mono" font-size="10">
+      iPXE HTTP
+    </text>
+    <rect x="115" y="49" width="40" height="14" rx="3" fill="rgba(255, 255, 255, 0.1)" />
+    <text
+      x="135"
+      y="60"
+      fill="#ffffff"
+      class="mono"
+      font-size="8"
+      font-weight="600"
+      text-anchor="middle"
+    >
+      ACTIVE
+    </text>
+
+    {/* Blade 2 */}
+    <rect
+      x="12" y="74" width="151" height="24" rx="6"
+      fill="#18181b"
+      stroke="#27272a"
+      stroke-width="1"
+    />
+    <circle cx="22" cy="86" r="3" fill="#ffffff" class="anim-pulse-fast" />
+    <text x="32" y="89" fill="#a1a1aa" class="mono" font-size="10">
+      NFS / Kernel
+    </text>
+    <rect x="115" y="79" width="40" height="14" rx="3" fill="rgba(255, 255, 255, 0.1)" />
+    <text
+      x="135"
+      y="90"
+      fill="#ffffff"
+      class="mono"
+      font-size="8"
+      font-weight="600"
+      text-anchor="middle"
+    >
+      STREAM
+    </text>
+
+    {/* Blade 3 */}
+    <rect
+      x="12" y="104" width="151" height="24" rx="6"
+      fill="#18181b"
+      stroke="#27272a"
+      stroke-width="1"
+    />
+    <circle cx="22" cy="116" r="3" fill="#71717a" class="anim-pulse-slow" />
+    <text x="32" y="119" fill="#a1a1aa" class="mono" font-size="10">
+      SQLite DB
+    </text>
+    <rect x="115" y="109" width="40" height="14" rx="3" fill="rgba(255, 255, 255, 0.1)" />
+    <text
+      x="135"
+      y="120"
+      fill="#ffffff"
+      class="mono"
+      font-size="8"
+      font-weight="600"
+      text-anchor="middle"
+    >
+      SYNCED
+    </text>
+  </g>
+
+  {/* Target Nodes (Cluster Machines) */}
+  {/* Node 1: Ready / Sanboot */}
+  <g transform="translate(350, 55)" filter="url(#cardShadow)">
+    <rect
+      x="0" y="0" width="140" height="60" rx="12"
+      fill="#121215"
+      stroke="#27272a"
+      stroke-width="1.2"
+    />
+    <circle cx="18" cy="20" r="4" fill="#ffffff" class="anim-pulse-slow" />
+    <text x="28" y="24" fill="#ffffff" font-size="11" font-weight="600">
+      node-01.local
+    </text>
+    <text
+      x="18"
+      y="44"
+      fill="#a1a1aa"
+      class="mono"
+      font-size="10"
+      font-weight="500"
+    >
+      ● Ready (Sanboot)
+    </text>
+  </g>
+
+  {/* Node 2: Installing / Autoinstall */}
+  <g transform="translate(350, 145)" filter="url(#cardShadow)">
+    <rect
+      x="0" y="0" width="140" height="60" rx="12"
+      fill="#121215"
+      stroke="#27272a"
+      stroke-width="1.2"
+    />
+    <circle cx="18" cy="20" r="4" fill="#e4e4e7" class="anim-pulse-fast" />
+    <text x="28" y="24" fill="#ffffff" font-size="11" font-weight="600">
+      node-02.local
+    </text>
+    <text
+      x="18"
+      y="44"
+      fill="#a1a1aa"
+      class="mono"
+      font-size="10"
+      font-weight="500"
+    >
+      ● Installing OS...
+    </text>
+  </g>
+
+  {/* Node 3: Pending Discovery */}
+  <g transform="translate(350, 235)" filter="url(#cardShadow)">
+    <rect
+      x="0" y="0" width="140" height="60" rx="12"
+      fill="#121215"
+      stroke="#27272a"
+      stroke-width="1.2"
+    />
+    <circle cx="18" cy="20" r="4" fill="#71717a" class="anim-pulse-slow" />
+    <text x="28" y="24" fill="#ffffff" font-size="11" font-weight="600">
+      52:54:00:99:00:01
+    </text>
+    <text
+      x="18"
+      y="44"
+      fill="#71717a"
+      class="mono"
+      font-size="10"
+      font-weight="500"
+    >
+      ● Pending Review
+    </text>
+  </g>
+</svg>

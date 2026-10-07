@@ -1,0 +1,43 @@
+---
+title: iPXE ZTP
+description: Máy chủ Zero Touch Provisioning hiện đại được đóng gói thành một file thực thi duy nhất.
+template: splash
+hero:
+  tagline: Tự động hóa cài đặt hệ điều hành qua mạng cho máy vật lý & VM — một binary duy nhất, web console hiện đại và cloud-init tức thì.
+  image:
+    file: ../../../assets/ztp-workflow.svg
+  actions:
+    - text: Bắt Đầu Ngay
+      link: /vi/getting-started/quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: Xem trên GitHub
+      link: https://github.com/001123/lab-v-ipxe
+      icon: external
+      variant: secondary
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Điểm Nổi Bật
+
+<CardGrid>
+  <Card title="Đóng Gói Một File Nhị Phân" icon="rocket">
+    Được biên dịch thành một file thực thi (single binary) duy nhất kết hợp backend **V (veb)** hiệu năng cao và frontend **Next.js 16** nhúng tĩnh. Không phụ thuộc runtime bên ngoài.
+  </Card>
+  <Card title="Quy Trình Tự Động Hóa Hoàn Toàn (ZTP)" icon="random">
+    Máy chủ khởi động qua mạng, chainload iPXE từ DHCP và tự báo danh. Địa chỉ MAC mới sẽ dừng ở trạng thái `pending`, sau khi duyệt sẽ tự động cài Ubuntu và báo về khi hoàn tất.
+  </Card>
+  <Card title="Boot NFS & Bộ Nhớ Đệm ISO" icon="down-caret">
+    Tải kernel và initrd trực tiếp qua giao thức NFS. Chỉ tải ~100MB kernel/initrd từ file ISO chính thức của Ubuntu trong lần đầu tiên, lưu đệm cục bộ và xóa ngay file ISO gốc.
+  </Card>
+  <Card title="Lựa Chọn Phân Vùng Linh Hoạt" icon="setting">
+    Cấu hình layout ổ cứng linh hoạt cho từng máy: **Direct ext4**, **ZFS root** (tự động tinh chỉnh ARC cho máy ít RAM) hoặc **LVM**.
+  </Card>
+  <Card title="Giao Diện Quản Trị Web Hiện Đại" icon="laptop">
+    Bảng điều khiển dark-mode xây dựng bằng React 19, Tailwind v4 và shadcn/ui. Cập nhật trạng thái máy theo thời gian thực, drawer chỉnh sửa chi tiết và duyệt máy một chạm.
+  </Card>
+  <Card title="Cơ Sở Dữ Liệu SQLite Tích Hợp" icon="database">
+    Tích hợp sẵn SQLite chế độ WAL để quản lý danh sách máy, thiết lập hệ thống và nhật ký. Không cần cài đặt hay duy trì cụm cơ sở dữ liệu riêng biệt.
+  </Card>
+</CardGrid>

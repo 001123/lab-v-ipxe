@@ -1,0 +1,46 @@
+---
+import { Icon } from '@astrojs/starlight/components';
+---
+
+{/* Inlined in <head> to avoid FOUC. Defaulting to dark for iPXE ZTP Docs */}
+<script is:inline>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		
+		// If user explicitly chose 'light' or 'dark', use that.
+		// Otherwise ('auto' or not set), check system preference or default to dark.
+		let theme = 'dark';
+		if (storedTheme === 'light' || storedTheme === 'dark') {
+			theme = storedTheme;
+		} else {
+			// Auto mode: default to dark for iPXE ZTP Docs
+			theme = 'dark';
+		}
+		
+		document.documentElement.dataset.theme = theme;
+		return {
+			updatePickers(pickerTheme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = pickerTheme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector('#theme-icons');
+					const newIcon = tmpl && tmpl.content.querySelector('.' + pickerTheme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script>
+
+<template id="theme-icons">
+	<Icon name="sun" class="light" />
+	<Icon name="moon" class="dark" />
+	<Icon name="laptop" class="auto" />
+</template>

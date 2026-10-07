@@ -8,10 +8,13 @@ tmp/
 tmp-prod/
 /lab-v-ipxe
 
-# frontend
+# frontend & docs
 web/node_modules/
 web/.next/
 web/out/
+docs/node_modules/
+docs/.astro/
+docs/dist/
 
 # runtime data
 *.db

@@ -141,3 +141,11 @@ while kill -0 "$BE_PID" 2>/dev/null && kill -0 "$FE_PID" 2>/dev/null; do
 done
 echo "==> one dev server exited; shutting down the other"
 '''
+
+[tasks."docs:dev"]
+description = "Run docs dev server (:4795)"
+run = "cd docs && npm run dev -- --port 4795"
+
+[tasks."docs:build"]
+description = "Build static docs"
+run = "cd docs && npm run build"

@@ -413,7 +413,7 @@ export default function AboutPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-              {/* Release v0.1.0 */}
+              {/* Release v0.0.1 */}
               <div className="relative border-l-2 border-primary/40 pl-4 sm:pl-6 space-y-2.5 sm:space-y-3">
                 <div className="absolute -left-[5px] top-1.5 size-2.5 rounded-full border-2 border-primary bg-background" />
 

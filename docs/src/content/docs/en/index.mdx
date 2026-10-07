@@ -1,0 +1,43 @@
+---
+title: iPXE ZTP
+description: Modern Zero Touch Provisioning server packaged as a single binary.
+template: splash
+hero:
+  tagline: Automated network boot provisioning for bare metal & VMs — single binary, web console, and instant cloud-init.
+  image:
+    file: ../../../assets/ztp-workflow.svg
+  actions:
+    - text: Getting Started
+      link: /en/getting-started/quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/001123/lab-v-ipxe
+      icon: external
+      variant: secondary
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Core Capabilities
+
+<CardGrid>
+  <Card title="Single Binary Deployment" icon="rocket">
+    Packaged as a single lightweight binary combining a high-performance **V (veb)** backend and an embedded **Next.js 16** web frontend. Zero external runtime dependencies.
+  </Card>
+  <Card title="Zero Touch Workflow" icon="random">
+    Machines power on, chainload iPXE via TFTP/DHCP, and report to the server. New MACs pause in `pending` until approved, then auto-install Ubuntu and report completion.
+  </Card>
+  <Card title="NFS Boot & ISO Cache" icon="down-caret">
+    Boots kernel and initrd directly via NFS. Only downloads ~100MB of kernel/initrd from the official Ubuntu ISO on first demand, caches them locally, and discards the bulky ISO.
+  </Card>
+  <Card title="Flexible Storage Layouts" icon="setting">
+    Choose per-machine disk layout presets: **Direct ext4**, **ZFS root** (with auto-tuned ARC for low-RAM machines), or **LVM** volume groups.
+  </Card>
+  <Card title="Modern Web Console" icon="laptop">
+    Dark-mode admin dashboard built with React 19, Tailwind v4, and shadcn/ui. Live machine status, drawer editor, instant approvals, and system metrics.
+  </Card>
+  <Card title="Embedded SQLite Database" icon="database">
+    Self-contained SQLite database with WAL mode for machine inventory, settings, and audit logs. Zero database cluster setup needed.
+  </Card>
+</CardGrid>
