@@ -9,13 +9,20 @@ import veb
 
 // base_url resolves the externally reachable URL for building boot scripts:
 // settings override > env config > the Host header of the incoming request.
+// Values that fail base_url validation fall back to the local default, so a
+// spoofed Host header cannot smuggle metacharacters into boot scripts.
 fn (app &App) base_url(ctx &Context) string {
+	fallback := 'http://127.0.0.1:${app.cfg.port}'
 	override := app.st.setting_or(store.setting_base_url, app.cfg.base_url)
 	if override != '' {
-		return override
+		return if is_valid_base_url(override) { override } else { fallback }
 	}
-	host := ctx.req.header.get(.host) or { '127.0.0.1:${app.cfg.port}' }
-	return 'http://${host}'
+	host := ctx.req.header.get(.host) or { return fallback }
+	candidate := 'http://${host}'
+	if !is_valid_base_url(candidate) {
+		return fallback
+	}
+	return candidate
 }
 
 fn (app &App) provider_for(name string) ?providers.OSProvider {
@@ -85,8 +92,8 @@ pub fn (mut app App) boot_ipxe(mut ctx Context) veb.Result {
 			created.os_version = def.version
 		}
 		app.st.machine_save(mut created) or {
-			// lost a race with a concurrent first boot; fetch the stored row
-			app.st.machine_by_mac_key(mac_key) or {
+			// lost a race with a concurrent first boot; use the stored row
+			created = app.st.machine_by_mac_key(mac_key) or {
 				return ctx.text(core.error_script('database error'))
 			}
 		}
@@ -108,7 +115,7 @@ pub fn (mut app App) boot_ipxe(mut ctx Context) veb.Result {
 			ctx.text(core.wait_script(base_url, mac, 'this machine is waiting for approval.'))
 		}
 		.wait_assets {
-			app.start_assets_fetch(m.os_name, m.os_version)
+			app.start_assets_fetch(m.os_name, m.os_version, false)
 			ctx.text(core.wait_script(base_url, mac, 'installer assets are being prepared...'))
 		}
 		.install {

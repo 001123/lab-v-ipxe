@@ -2,6 +2,7 @@ module ubuntu
 
 import os
 import sync
+import time
 
 pub enum AssetPhase {
 	idle
@@ -13,13 +14,15 @@ pub enum AssetPhase {
 
 pub struct AssetStatus {
 pub mut:
-	phase       AssetPhase
-	version     string
-	message     string
-	percent     int
-	bytes_done  i64
-	bytes_total i64
-	source      string
+	phase        AssetPhase
+	version      string
+	message      string
+	percent      int
+	bytes_done   i64
+	bytes_total  i64
+	source       string
+	attempts     int // consecutive failed fetch attempts
+	last_fail_at i64 // unix time of the last failure
 }
 
 // AssetManager owns the kernel/initrd cache for installer assets. Assets come
@@ -110,6 +113,13 @@ fn (mut am AssetManager) set_progress(version string, bytes_done i64, bytes_tota
 }
 
 fn (mut am AssetManager) fail(version string, message string) {
-	am.set_status(.failed, version, message)
+	am.mu.lock()
+	mut st := am.statuses[version] or { AssetStatus{ version: version } }
+	st.phase = .failed
+	st.message = message
+	st.attempts++
+	st.last_fail_at = time.now().unix()
+	am.statuses[version] = st
+	am.mu.unlock()
 	eprintln('[assets] failed: ${message}')
 }

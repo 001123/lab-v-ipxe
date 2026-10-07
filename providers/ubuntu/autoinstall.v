@@ -1,14 +1,30 @@
 module ubuntu
 
 import core
+import json2
+import net.urllib
 
 // $6$ sha512-crypt hash of the default password "ubuntu" (salt
 // ipxeDefaultSalt0), used when a machine has no custom password configured.
 pub const fallback_password_hash = '$6$ipxeDefaultSalt0$DlJ9SNa0PH5xkOyTIl3yKt/D0oXnG1B0A9ocqMltiua1I1wmvXOkMiaHXJ3jG.7EekliizetXlkqyhXcu4wfS.'
 
 // ZFS ARC cap/floor for low-RAM machines (bytes).
-const zfs_arc_max = 536870912
-const zfs_arc_min = 134217728
+const zfs_arc_max = 536870912 // 512 MiB (512 * 1024 * 1024 bytes)
+const zfs_arc_min = 134217728 // 128 MiB (128 * 1024 * 1024 bytes)
+
+// yaml_str renders a scalar as a double-quoted YAML string using the JSON
+// encoder (YAML 1.2 is a superset of JSON): stored values cannot inject extra
+// keys or break the document even if they bypassed input validation.
+fn yaml_str(s string) string {
+	return json2.encode(s, escape_unicode: true, time_as_unix: true)
+}
+
+// sh_sq escapes a value interpolated inside the single-quoted shell fragment
+// of a late-command: newlines are folded so the YAML line cannot break, and
+// ' becomes '\''.
+fn sh_sq(s string) string {
+	return s.replace('\r', ' ').replace('\n', ' ').replace("'", "'\\''")
+}
 
 // render_user_data builds the subiquity autoinstall user-data for one machine.
 pub fn render_user_data(req core.BootRequest) string {
@@ -24,9 +40,9 @@ pub fn render_user_data(req core.BootRequest) string {
 	lines << '    layout: us'
 	lines << '  locale: en_US.UTF-8'
 	lines << '  identity:'
-	lines << '    hostname: ${req.hostname}'
-	lines << '    username: ${req.username}'
-	lines << "    password: '${password}'"
+	lines << '    hostname: ${yaml_str(req.hostname)}'
+	lines << '    username: ${yaml_str(req.username)}'
+	lines << '    password: ${yaml_str(password)}'
 	lines << '  ssh:'
 	lines << '    install-server: true'
 	lines << '    allow-pw: true'
@@ -35,7 +51,7 @@ pub fn render_user_data(req core.BootRequest) string {
 		for key in req.ssh_keys.split_into_lines() {
 			k := key.trim_space()
 			if k != '' {
-				lines << "      - '${k}'"
+				lines << '      - ${yaml_str(k)}'
 			}
 		}
 	}
@@ -44,7 +60,7 @@ pub fn render_user_data(req core.BootRequest) string {
 	lines << '      name: ${req.storage_layout.str()}'
 	if req.storage_disk != '' {
 		lines << '      match:'
-		lines << "        path: '${req.storage_disk}'"
+		lines << '        path: ${yaml_str(req.storage_disk)}'
 	}
 	lines << '  packages:'
 	lines << '    - qemu-guest-agent'
@@ -54,13 +70,16 @@ pub fn render_user_data(req core.BootRequest) string {
 		lines << '    - curtin in-target -- sh -c "printf \'options zfs zfs_arc_max=${zfs_arc_max} zfs_arc_min=${zfs_arc_min}\\n\' > /etc/modprobe.d/zfs.conf"'
 		lines << '    - curtin in-target -- update-initramfs -u'
 	}
+	// Ansible-ready: passwordless sudo for the admin user. Ubuntu 26.04 ships
+	// sudo-rs, whose auth prompt breaks Ansible's password-based become.
+	lines << '    - curtin in-target -- sh -c "printf \'${sh_sq(req.username)} ALL=(ALL) NOPASSWD:ALL\\n\' > /etc/sudoers.d/90-lab-nopasswd && chmod 440 /etc/sudoers.d/90-lab-nopasswd"'
 	lines << '    - curtin in-target -- systemctl enable qemu-guest-agent'
-	lines << '    - curtin in-target -- curl -sS -X POST -d "mac=${req.mac}&hostname=${req.hostname}" ${req.base_url}/api/machines/installed || true'
+	lines << '    - curtin in-target -- curl -sS -X POST -d "mac=${req.mac}&hostname=${urllib.query_escape(req.hostname)}" ${req.base_url}/api/machines/installed || true'
 	return lines.join('\n') + '\n'
 }
 
 // render_meta_data builds the NoCloud meta-data. instance-id changes on every
 // reinstall so cloud-init re-runs the autoinstall.
 pub fn render_meta_data(req core.BootRequest) string {
-	return 'instance-id: i-${req.mac_key}-${req.install_count}\nlocal-hostname: ${req.hostname}\n'
+	return 'instance-id: i-${req.mac_key}-${req.install_count}\nlocal-hostname: ${yaml_str(req.hostname)}\n'
 }

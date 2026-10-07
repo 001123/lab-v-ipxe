@@ -59,11 +59,16 @@ pub fn new_app(cfg config.Config, st &store.Store) &App {
 
 // start_assets_fetch kicks off asset preparation in the background when a
 // machine wants to install but the kernel/initrd are not available yet.
-// Only ubuntu has a file-backed asset pipeline today; route this through
-// OSProvider once a second file-boot provider exists.
-fn (mut app App) start_assets_fetch(os_name string, version string) {
+// `force` is for explicit operator actions, which bypass the automatic
+// retry backoff. Only ubuntu has a file-backed asset pipeline today; route
+// this through OSProvider once a second file-boot provider exists.
+fn (mut app App) start_assets_fetch(os_name string, version string, force bool) {
 	if os_name == 'ubuntu' {
-		app.assets.ensure_assets(version)
+		if force {
+			app.assets.fetch_assets_now(version)
+		} else {
+			app.assets.ensure_assets(version)
+		}
 	}
 }
 

@@ -1,10 +1,16 @@
 module ubuntu
 
+import crypto.sha256
 import net.http
 import os
 import strconv
+import time
 
 const iso_name_suffix = '-live-server-amd64.iso'
+
+// an automatically retried fetch gives up after this many consecutive failures
+// and waits for a manual retry from the settings UI
+const max_auto_attempts = 3
 
 // refresh_status marks the manager ready when the files are already present
 // (e.g. after a restart, when the in-memory status was reset). It never
@@ -16,18 +22,56 @@ pub fn (mut am AssetManager) refresh_status(version string) {
 }
 
 // ensure_assets starts a background fetch/extract when the kernel/initrd for
-// `version` are not available yet. Safe to call on every boot request.
+// `version` are not available yet. Safe to call on every boot request: the
+// fetch is claimed before the worker starts, and a failed fetch is retried
+// automatically only up to max_auto_attempts times with backoff, so a boot
+// loop cannot hammer the release mirror.
 pub fn (mut am AssetManager) ensure_assets(version string) {
+	am.request_fetch(version, false)
+}
+
+// fetch_assets_now retries immediately, bypassing the automatic-retry backoff
+// and attempt cap. Used for explicit operator actions.
+pub fn (mut am AssetManager) fetch_assets_now(version string) {
+	am.request_fetch(version, true)
+}
+
+fn (mut am AssetManager) request_fetch(version string, force bool) {
 	if am.ready(version) {
 		if am.status_snapshot(version).phase != .ready {
 			am.set_status(.ready, version, 'assets available')
 		}
 		return
 	}
-	if am.status_snapshot(version).phase in [.downloading, .extracting] {
+	am.mu.lock()
+	mut st := am.statuses[version] or { AssetStatus{ version: version } }
+	if st.phase in [.downloading, .extracting] {
+		am.mu.unlock()
 		return
 	}
+	if st.phase == .failed && !force {
+		backoff_active := time.now().unix() - st.last_fail_at < auto_retry_delay(st.attempts)
+		if st.attempts >= max_auto_attempts || backoff_active {
+			am.mu.unlock()
+			return
+		}
+	}
+	// claim the version before spawning: concurrent boot requests must see the
+	// fetch as running instead of each spawning their own worker
+	st.phase = .downloading
+	st.message = 'fetching ubuntu ${version} assets'
+	st.percent = 0
+	st.bytes_done = 0
+	st.bytes_total = 0
+	am.statuses[version] = st
+	am.mu.unlock()
 	spawn am.fetch_worker(version)
+}
+
+// auto_retry_delay is the wait in seconds before the next automatic attempt
+// after `attempts` consecutive failures.
+fn auto_retry_delay(attempts int) i64 {
+	return if attempts <= 1 { 30 } else { 120 }
 }
 
 fn (mut am AssetManager) fetch_worker(version string) {
@@ -51,15 +95,39 @@ fn (mut am AssetManager) fetch_worker(version string) {
 		am.fail(version, 'cannot find an ISO to download: ${err.msg()}')
 		return
 	}
+	iso_name := url.all_after_last('/')
 	iso_path := os.join_path(dest, 'ubuntu-${version}-download.iso')
+	part_path := '${iso_path}.part'
 	am.set_status(.downloading, version, 'downloading ${url}')
-	http.download_file_with_progress(url, iso_path,
+	http.download_file_with_progress(url, part_path,
 		downloader: &ProgressDownloader{
 			am:      am
 			version: version
 		}
 	) or {
+		os.rm(part_path) or {}
 		am.fail(version, 'download failed: ${err.msg()}')
+		return
+	}
+	am.set_status(.downloading, version, 'verifying ${iso_name} against SHA256SUMS')
+	expected := fetch_expected_sha256(url, iso_name) or {
+		os.rm(part_path) or {}
+		am.fail(version, 'cannot verify the download: ${err.msg()}')
+		return
+	}
+	actual := sha256_of_file(part_path) or {
+		os.rm(part_path) or {}
+		am.fail(version, 'cannot hash the downloaded ISO: ${err.msg()}')
+		return
+	}
+	if actual.to_lower() != expected.to_lower() {
+		os.rm(part_path) or {}
+		am.fail(version, 'checksum mismatch for ${iso_name}: expected ${expected}, got ${actual}')
+		return
+	}
+	os.mv(part_path, iso_path) or {
+		os.rm(part_path) or {}
+		am.fail(version, 'cannot move the verified ISO into place: ${err.msg()}')
 		return
 	}
 	am.set_status(.extracting, version, 'extracting kernel/initrd from the downloaded ISO')
@@ -82,6 +150,8 @@ fn (mut am AssetManager) finish_ok(version string, source string) {
 	st.source = source
 	st.message = 'assets ready (${source})'
 	st.percent = 100
+	st.attempts = 0
+	st.last_fail_at = 0
 	am.statuses[version] = st
 	am.mu.unlock()
 	eprintln('[assets] ready: ubuntu ${version} (${source})')
@@ -157,6 +227,57 @@ pub fn pick_iso_filename(html string, version string) ?string {
 		return none
 	}
 	return best
+}
+
+// fetch_expected_sha256 downloads SHA256SUMS from the ISO's release directory
+// and returns the expected hash for `iso_name`.
+fn fetch_expected_sha256(iso_url string, iso_name string) !string {
+	sums_url := '${iso_url.all_before_last('/')}/SHA256SUMS'
+	resp := http.get(sums_url)!
+	if resp.status_code != 200 {
+		return error('${sums_url} returned HTTP ${resp.status_code}')
+	}
+	expected := parse_sha256sums(resp.body, iso_name) or {
+		return error('no SHA256SUMS entry for ${iso_name} in ${sums_url}')
+	}
+	return expected
+}
+
+// parse_sha256sums finds the digest for `name` in a SHA256SUMS file, whose
+// lines look like "<64 hex chars> *<file name>".
+pub fn parse_sha256sums(body string, name string) ?string {
+	for line in body.split_into_lines() {
+		fields := line.trim_space().fields()
+		if fields.len == 2 && fields[0].len == 64 && fields[1].trim_left('*') == name {
+			return fields[0]
+		}
+	}
+	return none
+}
+
+// sha256_of_file hashes a file in 1 MiB chunks, so large ISOs never have to
+// fit in memory.
+fn sha256_of_file(path string) !string {
+	mut f := os.open(path)!
+	defer {
+		f.close()
+	}
+	mut d := sha256.new()
+	mut buf := []u8{len: 1024 * 1024}
+	for {
+		n := f.read(mut buf) or {
+			if err is os.Eof {
+				break
+			}
+			return error('read ${path}: ${err.msg()}')
+		}
+		if n > 0 {
+			d.write(buf[..n])!
+		}
+	}
+	mut hash := []u8{len: sha256.size}
+	d.checksum_into(mut hash)
+	return hash.hex()
 }
 
 fn find_extractor() ?string {

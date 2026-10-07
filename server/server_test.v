@@ -116,6 +116,22 @@ fn test_full_api_flow() {
 	assert res4d.status_code == 200
 	assert json2.decode[SettingsRes](res4d.body)!.ssh_keys_default == 'ssh-ed25519 AAAA global@host'
 
+	// invalid ssh keys / base_url are rejected at the boundary
+	res4db := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"ssh_keys_default":"ssh-ed25519 AAAA bad\\nlate-commands:"}'
+	)!
+	assert res4db.status_code == 400
+	res4dc := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"base_url_override":"not a url"}'
+	)!
+	assert res4dc.status_code == 400
+
 	// OS images catalog: replace it with a lab-specific NFS export
 	res4e := http.fetch(
 		method: .put
@@ -265,6 +281,54 @@ fn test_full_api_flow() {
 	)!
 	assert res7c.status_code == 400
 
+	// identity fields are validated at the boundary: injected hostname,
+	// username or ssh keys must never reach the autoinstall YAML
+	res7d := http.fetch(
+		method: .post
+		url:    '${test_base}/api/machines'
+		header: h_json_auth(token)
+		data:   '{"mac":"bc:24:11:00:24:04","hostname":"vm test"}'
+	)!
+	assert res7d.status_code == 400
+	res7e := http.fetch(
+		method: .post
+		url:    '${test_base}/api/machines'
+		header: h_json_auth(token)
+		data:   '{"mac":"bc:24:11:00:24:05","username":"Root"}'
+	)!
+	assert res7e.status_code == 400
+	res7f := http.fetch(
+		method: .post
+		url:    '${test_base}/api/machines'
+		header: h_json_auth(token)
+		data:   '{"mac":"bc:24:11:00:24:06","ssh_keys":"ssh-ed25519 AAAA k\\nlate-commands:"}'
+	)!
+	assert res7f.status_code == 400
+	res7g := http.fetch(
+		method: .post
+		url:    '${test_base}/api/machines'
+		header: h_json_auth(token)
+		data:   '{"mac":"bc:24:11:00:24:07","nfs_root":"bad path"}'
+	)!
+	assert res7g.status_code == 400
+
+	// a valid per-machine nfs_root override is accepted
+	res7h := http.fetch(
+		method: .post
+		url:    '${test_base}/api/machines'
+		header: h_json_auth(token)
+		data:   '{"mac":"bc:24:11:00:24:08","hostname":"nfs-override","nfs_root":"10.0.0.9:/srv/nfs/ubuntu-24.04"}'
+	)!
+	assert res7h.status_code == 200
+	override := json2.decode[MachineDto](res7h.body)!
+	assert override.nfs_root == '10.0.0.9:/srv/nfs/ubuntu-24.04'
+	res7i := http.fetch(
+		method: .delete
+		url:    '${test_base}/api/machines/${override.id}'
+		header: h_auth(token)
+	)!
+	assert res7i.status_code == 200
+
 	// update only provided fields; the password hash must survive
 	res8 := http.fetch(
 		method: .put
@@ -379,6 +443,14 @@ fn test_full_api_flow() {
 	)!
 	assert res15.status_code == 404
 
+	// phone-home with an invalid hostname is rejected without side effects
+	res15b := http.fetch(
+		method: .post
+		url:    '${test_base}/api/machines/installed'
+		data:   'mac=bc:24:11:00:24:99&hostname=bad%20name'
+	)!
+	assert res15b.status_code == 400
+
 	// filter by status
 	res16 := http.fetch(url: '${test_base}/api/machines?status=pending', header: h_auth(token))!
 	assert json2.decode[[]MachineDto](res16.body)!.len == 1
@@ -446,4 +518,40 @@ fn test_full_api_flow() {
 	assert res19.status_code == 200
 	res20 := http.fetch(url: '${test_base}/api/auth/me', header: h_auth(token))!
 	assert res20.status_code == 401
+}
+
+fn test_boundary_validators_reject_injection() {
+	assert (hostname_from('vm-test') or { '' }) == 'vm-test'
+	if _ := hostname_from('vm test') {
+		assert false, 'hostname with a space must be rejected'
+	}
+	if _ := hostname_from('a_b') {
+		assert false, 'hostname with an underscore must be rejected'
+	}
+	if _ := hostname_from('-lead') {
+		assert false, 'hostname with a leading hyphen must be rejected'
+	}
+	assert (username_from('timi') or { '' }) == 'timi'
+	if _ := username_from('Root') {
+		assert false, 'uppercase username must be rejected'
+	}
+	if _ := username_from("x'y") {
+		assert false, 'quote in username must be rejected'
+	}
+	if _ := ssh_keys_from('ssh-ed25519 AAAA k\nlate-commands:') {
+		assert false, 'multi-line ssh key injection must be rejected'
+	}
+	if _ := ssh_keys_from("ssh-ed25519 AAAA it's") {
+		assert false, 'quote in ssh key comment must be rejected'
+	}
+	assert (ssh_keys_from('ssh-ed25519 AAAA k\nssh-rsa AAAAB3Nza') or { '' }) == 'ssh-ed25519 AAAA k\nssh-rsa AAAAB3Nza'
+	assert (validate_nfs_root('10.0.0.9:/srv/nfs/x') or { '' }) == '10.0.0.9:/srv/nfs/x'
+	if _ := validate_nfs_root('10.0.0.9:/srv/nfs\nx') {
+		assert false, 'newline in nfs_root must be rejected'
+	}
+	assert is_valid_base_url('http://192.168.250.10:8080')
+	assert is_valid_base_url('https://boot.example.com')
+	assert !is_valid_base_url('not a url')
+	assert !is_valid_base_url('http://host;reboot')
+	assert !is_valid_base_url('http://h\nost')
 }

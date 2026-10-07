@@ -92,15 +92,16 @@ fn (mut app App) build_settings_res() SettingsRes {
 }
 
 // validate_nfs_root checks a host:/path NFS export string. IPv6 hosts and
-// whitespace are rejected: the value goes on a kernel cmdline verbatim.
+// whitespace/control characters are rejected: the value goes on a kernel
+// cmdline and into the iPXE script verbatim.
 fn validate_nfs_root(raw string) !string {
 	v := raw.trim_space()
 	if v == '' {
 		return error('nfs_root is required (expected host:/path)')
 	}
 	for c in v {
-		if c == ` ` || c == `\t` {
-			return error('invalid nfs_root "${raw}" (expected host:/path without spaces)')
+		if c <= ` ` || c == 0x7f {
+			return error('invalid nfs_root "${raw}" (expected host:/path without spaces or control characters)')
 		}
 	}
 	colon := v.index(':') or { return error('invalid nfs_root "${raw}" (expected host:/path)') }
@@ -167,7 +168,8 @@ pub fn (mut app App) settings_put(mut ctx Context) veb.Result {
 	}
 	base_url := payload.base_url_override.trim_space()
 	if base_url != '' {
-		app.st.set_setting(store.setting_base_url, base_url) or {
+		valid := base_url_from(base_url) or { return bad_request(mut ctx, err.msg()) }
+		app.st.set_setting(store.setting_base_url, valid) or {
 			return server_error(mut ctx, err.msg())
 		}
 	}
@@ -177,7 +179,8 @@ pub fn (mut app App) settings_put(mut ctx Context) veb.Result {
 			return server_error(mut ctx, err.msg())
 		}
 	} else if ssh != '' {
-		app.st.set_setting(store.setting_ssh_keys, ssh) or {
+		valid := ssh_keys_from(ssh) or { return bad_request(mut ctx, err.msg()) }
+		app.st.set_setting(store.setting_ssh_keys, valid) or {
 			return server_error(mut ctx, err.msg())
 		}
 	}
@@ -202,13 +205,13 @@ pub fn (mut app App) assets_fetch(mut ctx Context) veb.Result {
 	version := payload.version.trim_space()
 	if os_name == '' && version == '' {
 		for img in app.st.os_images() {
-			app.start_assets_fetch(img.os_name, img.version)
+			app.start_assets_fetch(img.os_name, img.version, true)
 		}
 	} else if os_name != '' && version != '' {
 		_ := app.st.os_image_for(os_name, version) or {
 			return bad_request(mut ctx, 'os image "${os_name} ${version}" is not in the catalog')
 		}
-		app.start_assets_fetch(os_name, version)
+		app.start_assets_fetch(os_name, version, true)
 	} else {
 		return bad_request(mut ctx, 'provide both os_name and version, or neither')
 	}

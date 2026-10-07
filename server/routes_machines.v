@@ -55,11 +55,11 @@ fn apply_payload(mut m store.Machine, p MachinePayload, is_create bool) ! {
 	}
 	h := p.hostname.trim_space()
 	if h != '' {
-		m.hostname = h
+		m.hostname = hostname_from(h) or { return err }
 	}
 	u := p.username.trim_space()
 	if u != '' {
-		m.username = u
+		m.username = username_from(u) or { return err }
 	}
 	if p.password != '' {
 		m.password_hash = sha512crypt.hash(p.password, sha512crypt.generate_salt(),
@@ -69,11 +69,11 @@ fn apply_payload(mut m store.Machine, p MachinePayload, is_create bool) ! {
 	if k == 'auto' {
 		m.ssh_keys = ''
 	} else if k != '' {
-		m.ssh_keys = k
+		m.ssh_keys = ssh_keys_from(k) or { return err }
 	}
 	r := p.nfs_root.trim_space()
 	if r != '' {
-		m.nfs_root = r
+		m.nfs_root = validate_nfs_root(r) or { return err }
 	}
 	n := p.notes.trim_space()
 	if n != '' {
@@ -223,7 +223,7 @@ pub fn (mut app App) machines_phone_home(mut ctx Context) veb.Result {
 	}
 	hostname := ctx.form['hostname'].trim_space()
 	if hostname != '' {
-		m.hostname = hostname
+		m.hostname = hostname_from(hostname) or { return bad_request(mut ctx, err.msg()) }
 	}
 	m.status = .installed
 	m.installed_at = store.now_unix()
