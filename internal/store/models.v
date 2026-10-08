@@ -23,28 +23,29 @@ pub enum StorageLayout {
 @[table: 'machines']
 pub struct Machine {
 pub mut:
-	id             int @[primary; sql: serial]
-	mac            string
-	mac_key        string
-	hostname       string
-	status         MachineStatus = .pending
-	boot_mode      BootMode      = .nfs
-	storage_layout StorageLayout = .direct
-	storage_disk   string // installer disk match path, '' -> largest disk
-	os_name        string = 'ubuntu'
-	os_version     string = '26.04.1'
-	username       string = 'ubuntu'
-	password_hash  string
-	ssh_keys       string
-	nfs_root       string
-	notes          string
-	auto_created   bool
-	install_count  int
-	approved_at    i64
-	installed_at   i64
-	last_seen_at   i64
-	created_at     i64
-	updated_at     i64
+	id              int @[primary; sql: serial]
+	mac             string
+	mac_key         string
+	hostname        string
+	status          MachineStatus = .pending
+	boot_mode       BootMode      = .nfs
+	storage_layout  StorageLayout = .direct
+	storage_disk    string // installer disk match path, '' -> largest disk
+	keep_ipxe_first bool   = true
+	os_name         string = 'ubuntu'
+	os_version      string = '26.04.1'
+	username        string = 'ubuntu'
+	password_hash   string
+	ssh_keys        string
+	nfs_root        string
+	notes           string
+	auto_created    bool
+	install_count   int
+	approved_at     i64
+	installed_at    i64
+	last_seen_at    i64
+	created_at      i64
+	updated_at      i64
 }
 
 @[table: 'users']

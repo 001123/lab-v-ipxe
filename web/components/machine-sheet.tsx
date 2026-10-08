@@ -81,6 +81,7 @@ function initForm(machine: Machine | null, images: OsImage[]): MachinePayload {
       boot_mode: machine.boot_mode,
       storage_layout: machine.storage_layout,
       storage_disk: machine.storage_disk,
+      keep_ipxe_first: machine.keep_ipxe_first ?? true,
     }
   }
   const fallback = defaultImage(images)
@@ -97,6 +98,7 @@ function initForm(machine: Machine | null, images: OsImage[]): MachinePayload {
     boot_mode: 'nfs',
     storage_layout: 'direct',
     storage_disk: '',
+    keep_ipxe_first: true,
   }
 }
 
@@ -551,6 +553,28 @@ export function MachineSheet({ open, onOpenChange, machine, mode }: MachineSheet
                   )}
                 </p>
               )}
+            </div>
+
+            <div className="space-y-1.5 pt-1 border-t border-border/40">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="machine-keep-ipxe-first"
+                  checked={form.keep_ipxe_first ?? true}
+                  disabled={isLocked}
+                  onCheckedChange={(checked) => {
+                    set('keep_ipxe_first', checked === true)
+                  }}
+                />
+                <Label
+                  htmlFor="machine-keep-ipxe-first"
+                  className="text-xs sm:text-sm font-medium cursor-pointer select-none"
+                >
+                  Keep iPXE first in UEFI
+                </Label>
+              </div>
+              <p className="text-[11px] text-muted-foreground pl-6 leading-normal">
+                Preserve PXE/iPXE as the #1 UEFI boot entry after installation so the machine can always be re-provisioned via network boot.
+              </p>
             </div>
           </div>
 

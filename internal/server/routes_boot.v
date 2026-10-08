@@ -51,21 +51,22 @@ fn (app &App) request_for(m &store.Machine, base_url string) boot.BootRequest {
 		app.st.setting_or(store.setting_ssh_keys, '')
 	}
 	return boot.BootRequest{
-		base_url:       base_url
-		mac:            m.mac
-		mac_key:        m.mac_key
-		hostname:       m.hostname
-		username:       m.username
-		password_hash:  m.password_hash
-		ssh_keys:       ssh_keys
-		nfs_root:       nfs_root
-		os_name:        m.os_name
-		os_version:     m.os_version
-		arch:           'amd64'
-		storage_layout: m.storage_layout
-		storage_disk:   m.storage_disk
-		install_count:  m.install_count
-		boot_mode:      m.boot_mode
+		base_url:        base_url
+		mac:             m.mac
+		mac_key:         m.mac_key
+		hostname:        m.hostname
+		username:        m.username
+		password_hash:   m.password_hash
+		ssh_keys:        ssh_keys
+		nfs_root:        nfs_root
+		os_name:         m.os_name
+		os_version:      m.os_version
+		arch:            'amd64'
+		storage_layout:  m.storage_layout
+		storage_disk:    m.storage_disk
+		install_count:   m.install_count
+		boot_mode:       m.boot_mode
+		keep_ipxe_first: m.keep_ipxe_first
 	}
 }
 

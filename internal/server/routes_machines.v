@@ -102,6 +102,9 @@ fn apply_payload(mut m store.Machine, p MachinePayload, is_create bool) ! {
 	if p.storage_disk.trim_space() != '' {
 		m.storage_disk = storage_disk_from(p.storage_disk) or { return err }
 	}
+	if keep_first := p.keep_ipxe_first {
+		m.keep_ipxe_first = keep_first
+	}
 }
 
 @['/api/machines'; get]
@@ -216,6 +219,11 @@ fn has_config_changes(m store.Machine, p MachinePayload) bool {
 			p.storage_disk.trim_space()
 		}
 		if target_disk != m.storage_disk {
+			return true
+		}
+	}
+	if keep_first := p.keep_ipxe_first {
+		if keep_first != m.keep_ipxe_first {
 			return true
 		}
 	}

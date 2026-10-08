@@ -244,6 +244,7 @@ fn test_full_api_flow() {
 	assert created.storage_layout == 'direct'
 	assert created.storage_disk == '/dev/nvme1n1'
 	assert created.has_password
+	assert created.keep_ipxe_first
 
 	// duplicate MAC (different spelling) -> 409
 	res6 := http.fetch(

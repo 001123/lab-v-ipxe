@@ -10,6 +10,7 @@ export interface Machine {
   boot_mode: BootMode
   storage_layout: StorageLayout
   storage_disk: string
+  keep_ipxe_first: boolean
   os_name: string
   os_version: string
   username: string
@@ -39,6 +40,7 @@ export interface MachinePayload {
   boot_mode?: BootMode
   storage_layout?: StorageLayout
   storage_disk?: string
+  keep_ipxe_first?: boolean
 }
 
 export interface LoginRes {

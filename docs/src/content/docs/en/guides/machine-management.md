@@ -25,6 +25,7 @@ When an unknown physical server powers on and boots via iPXE, it automatically r
    - **IP Allocation**: Choose **DHCP** or enter a **Static IP / Netmask / Gateway / DNS**.
    - **Operating System**: Select the target Ubuntu release (e.g. `24.04.5`).
    - **Storage Layout**: Choose `direct` (ext4), `zfs` root, or `lvm`.
+   - **Keep iPXE first in UEFI**: Enabled by default. Preserves PXE/iPXE as entry #1 in the machine's UEFI BootOrder (placing Ubuntu as #2), ensuring seamless Zero-Touch Provisioning and remote reinstalls.
    - **SSH Public Key**: Paste your authorized public key for passwordless root SSH access.
 4. Click **Confirm Approval**.
 

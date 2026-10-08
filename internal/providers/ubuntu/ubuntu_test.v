@@ -7,21 +7,22 @@ import time
 
 fn sample_req() boot.BootRequest {
 	return boot.BootRequest{
-		base_url:       'http://192.168.250.10:4793'
-		mac:            'BC:24:11:00:24:99'
-		mac_key:        'bc2411002499'
-		hostname:       'vm-test'
-		username:       'timi'
-		password_hash:  ''
-		ssh_keys:       'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKey timi@workstation\nssh-rsa AAAAB3Nza example2'
-		nfs_root:       '192.168.250.4:/srv/nfs/ubuntu-24.04.5'
-		os_name:        'ubuntu'
-		os_version:     '24.04.5'
-		arch:           'amd64'
-		storage_layout: .zfs
-		storage_disk:   ''
-		install_count:  0
-		boot_mode:      .nfs
+		base_url:        'http://192.168.250.10:4793'
+		mac:             'BC:24:11:00:24:99'
+		mac_key:         'bc2411002499'
+		hostname:        'vm-test'
+		username:        'timi'
+		password_hash:   ''
+		ssh_keys:        'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKey timi@workstation\nssh-rsa AAAAB3Nza example2'
+		nfs_root:        '192.168.250.4:/srv/nfs/ubuntu-24.04.5'
+		os_name:         'ubuntu'
+		os_version:      '24.04.5'
+		arch:            'amd64'
+		storage_layout:  .zfs
+		storage_disk:    ''
+		install_count:   0
+		boot_mode:       .nfs
+		keep_ipxe_first: true
 	}
 }
 
@@ -66,11 +67,23 @@ fn test_user_data_zfs_defaults() {
 	assert ud.contains('zfs_arc_max=536870912')
 	assert ud.contains('zfs_arc_min=134217728')
 	assert ud.contains('update-initramfs -u')
+	assert ud.contains('early-commands:')
+	assert ud.contains('ipxe_boot_current')
+	assert ud.contains('efibootmgr -o')
 	assert ud.contains('timi ALL=(ALL) NOPASSWD:ALL')
 	assert ud.contains('/etc/sudoers.d/90-lab-nopasswd')
 	assert ud.contains('systemctl enable qemu-guest-agent')
 	assert ud.contains('mac=BC:24:11:00:24:99&hostname=vm-test')
 	assert ud.contains('http://192.168.250.10:4793/api/machines/installed')
+}
+
+fn test_user_data_keep_ipxe_first_disabled() {
+	mut req := sample_req()
+	req.keep_ipxe_first = false
+	ud := render_user_data(req)
+	assert !ud.contains('early-commands:')
+	assert !ud.contains('ipxe_boot_current')
+	assert !ud.contains('efibootmgr -o')
 }
 
 fn test_user_data_custom_password_direct_layout_no_keys() {

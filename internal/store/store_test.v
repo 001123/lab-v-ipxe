@@ -51,18 +51,22 @@ fn test_machine_defaults_and_storage_disk() {
 	}
 	assert m.storage_layout == .direct
 	assert m.storage_disk == ''
+	assert m.keep_ipxe_first
 	s.machine_save(mut m)!
 	got := s.machine_by_id(m.id) or { panic('machine missing') }
 	assert got.storage_layout == .direct
 	assert got.storage_disk == ''
+	assert got.keep_ipxe_first
 
 	mut m2 := got
 	m2.storage_layout = .zfs
 	m2.storage_disk = '/dev/nvme1n1'
+	m2.keep_ipxe_first = false
 	s.machine_save(mut m2)!
 	got2 := s.machine_by_id(m2.id) or { panic('machine missing') }
 	assert got2.storage_layout == .zfs
 	assert got2.storage_disk == '/dev/nvme1n1'
+	assert !got2.keep_ipxe_first
 }
 
 fn test_migrate_adds_storage_disk_column_to_legacy_table() {
@@ -73,6 +77,8 @@ fn test_migrate_adds_storage_disk_column_to_legacy_table() {
 	s.migrate()!
 	has_disk := s.db.q_int("select count(*) from pragma_table_info('machines') where name = 'storage_disk'")!
 	assert has_disk == 1
+	has_keep_pxe := s.db.q_int("select count(*) from pragma_table_info('machines') where name = 'keep_ipxe_first'")!
+	assert has_keep_pxe == 1
 }
 
 fn test_os_images_roundtrip() {

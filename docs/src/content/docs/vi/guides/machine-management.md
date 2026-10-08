@@ -25,6 +25,7 @@ Khi một máy chủ vật lý mới cắm điện và nạp iPXE lần đầu, 
    - **Cấp phát IP**: Chọn nhận qua **DHCP** hoặc nhập **IP tĩnh / Netmask / Gateway / DNS**.
    - **Phiên bản OS**: Chọn bản phát hành Ubuntu mong muốn (vd `24.04.5`).
    - **Mẫu phân vùng**: Chọn `direct` (ext4), `zfs` root hoặc `lvm`.
+   - **Giữ iPXE ưu tiên đầu trong UEFI**: Mặc định bật. Giữ nguyên vị trí số 1 của PXE/iPXE trong BootOrder của UEFI sau khi cài Ubuntu (đặt Ubuntu ở vị trí số 2), giúp máy luôn sẵn sàng cho Zero-Touch Provisioning / Reinstall.
    - **SSH Public Key**: Dán SSH key công khai của bạn để đăng nhập root không cần mật khẩu.
 4. Bấm **Xác Nhận Duyệt (Confirm Approval)**.
 
