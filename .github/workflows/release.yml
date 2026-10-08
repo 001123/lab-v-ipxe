@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag_name:
@@ -14,7 +12,7 @@ on:
         type: string
 
 concurrency:
-  group: release-${{ github.event.inputs.tag_name || github.event.release.tag_name || github.ref_name }}
+  group: release-${{ github.event.inputs.tag_name || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -41,8 +39,6 @@ jobs:
         run: |
           if [ -n "${{ inputs.tag_name }}" ]; then
             TAG="${{ inputs.tag_name }}"
-          elif [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
           elif [ "${{ github.ref_type }}" = "tag" ]; then
             TAG="${{ github.ref_name }}"
           else
@@ -213,6 +209,16 @@ jobs:
           cat *.sha256 > checksums.txt
           rm -f *.sha256
           ls -la
+
+      - name: Clear existing release notes if release already exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.build-frontend.outputs.tag }}"
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists. Clearing release notes to prevent duplicate append..."
+            gh release edit "${TAG}" --notes ""
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
