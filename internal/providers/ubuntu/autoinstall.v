@@ -36,6 +36,9 @@ pub fn render_user_data(req boot.BootRequest) string {
 	lines << '  interactive-sections: []'
 	lines << '  refresh-installer:'
 	lines << '    update: false'
+	lines << '  apt:'
+	lines << '    conf: |'
+	lines << '      Acquire::ForceIPv4 "true";'
 	if req.keep_ipxe_first {
 		lines << '  early-commands:'
 		lines << '    - sh -c "test -d /sys/firmware/efi/efivars && efibootmgr | grep \'^BootCurrent:\' | cut -d\' \' -f2 > /run/ipxe_boot_current || true"'
