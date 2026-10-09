@@ -32,7 +32,8 @@ Machine powers on → router (OpenWrt dnsmasq, iPXE via TFTP) → chain http://<
   │                  (missing kernel/initrd → downloads the ISO from the internet, caches only ~100MB, then deletes the ISO)
   ├─ install done  → late-command phone-home POST /api/machines/installed → "installed"
   │                  (or click "Mark installed" in the UI if phone-home could not reach the app)
-  └─ installed     → sanboot from local disk (prevents reinstall loops); to reinstall → Reinstall button
+  ├─ installed     → sanboot from local disk (prevents reinstall loops); to reinstall → Reinstall button
+  └─ Day-1 ready   → 🚀 Ansible-ready immediately: SSH key auth, passwordless sudo, Python 3, fast APT mirror
 ```
 
 ## Running in dev
@@ -180,7 +181,17 @@ curl -X POST -d 'mac=bc:24:11:00:24:99&hostname=vm-test' http://127.0.0.1:4793/a
 - **APT Mirror & Fast Offline Install**: During initial installation Subiquity sets `disable_suites: [security, updates, backports]` to prevent slow remote package indexing and hangs when upstream Canonical mirrors are sluggish. The configured APT mirror (`apt_mirror_default` in Settings, default fallback `http://archive.ubuntu.com/ubuntu/`) is injected into `apt.primary`. In addition, `late-commands` rewrites `/etc/apt/sources.list.d/ubuntu.sources` (and legacy `/etc/apt/sources.list`) to use this mirror for all suites (`archive`, `updates`, `backports`, `security`) so the installed OS stays fast and up-to-date post-installation. Admins can test mirror connectivity and latency directly in Settings via the **Test Mirror** button (`POST /api/settings/test-apt-mirror`). Local mirrors or caching proxies (e.g. `http://192.168.x.x:3142/ubuntu/`) are fully supported.
 - **Boot mode**: `nfs` (default, implemented) or `http` (selectable in the API/UI, but the Ubuntu provider currently returns a "not implemented yet" error for it).
 - **Storage layout**: `direct` (ext4, default), `zfs` or `lvm`. `zfs` adds late-commands writing `/etc/modprobe.d/zfs.conf` (`zfs_arc_max=512MiB`, `zfs_arc_min=128MiB`) + `update-initramfs -u` — needed for low-RAM machines. The per-machine **Install disk** field (drawer) accepts a `/dev/...` path (e.g. `/dev/nvme0n1`, `/dev/disk/by-id/...`) → rendered as `storage.layout.match.path`; leave empty = subiquity picks the largest disk, enter `auto` to reset to the default.
-- **Ansible-ready**: autoinstall pre-creates `/etc/sudoers.d/90-lab-nopasswd` (NOPASSWD for the admin user) — Ubuntu 26.04 uses sudo-rs, whose auth prompt differs from the format Ansible expects, so password-based become times out. Installed machines come with sshd + python3 → run `ansible -b` right away with no extra configuration.
+- **Ansible-ready Out-of-the-Box (Day-0 to Day-1 Integration)**: A major differentiator of `lab-v-ipxe` is that newly provisioned nodes require **zero manual post-install touches**. As soon as the machine status shifts to `installed` on the dashboard, it is immediately ready for orchestration:
+  - *Passwordless sudo*: Autoinstall `late-commands` automatically injects `/etc/sudoers.d/90-lab-nopasswd` (`ubuntu ALL=(ALL) NOPASSWD:ALL`, permissions `0440`). This eliminates password prompts and solves compatibility issues with `sudo-rs` (shipped in modern Ubuntu 24.04/26.04), whose authentication prompt format causes standard Ansible password-based `become` to hang or time out.
+  - *SSH Key & Python 3*: SSH public keys from global Settings or machine overrides are provisioned directly into `~/.ssh/authorized_keys`, and Python 3 is verified in PATH.
+  - *Instant verification*:
+    ```bash
+    # Connectivity & ping fact discovery
+    ansible all -i '<machine-ip>,' -m ping -u ubuntu
+    # Sudo privilege escalation without password prompts
+    ansible all -i '<machine-ip>,' -m command -a 'whoami' -u ubuntu -b   # -> root
+    ```
+  - *Automated cluster handoff*: This enables seamless automated pipelines where physical or virtual nodes boot from PXE, register in the lab-v-ipxe UI, install unattended, and instantly run Ansible playbooks (e.g., K3s/Kubernetes bootstrapping, Docker swarm, monitoring agents, Tailscale setup) without any human operator intervention.
 - **iPXE cmdline** keeps the verified settings: no `initrd=` on the kernel line (conflicts with UEFI EFI_LOAD_FILE2), `ramdisk_size=3500000`, `cloud-config-url=/dev/null`.
 - **OS password**: stored as a `$6$` hash (sha512-crypt, compatible with `/etc/shadow` and cloud-init); UI passwords use bcrypt via `crypto.bcrypt`; session tokens via `veb.auth`.
 - **Low-RAM machines**: use NFS boot (rootfs streamed over NFS, RAM ~300MB–4GB) — PUBLIC HTTP mode (tmpfs) only suits machines with ≥8GB and is not part of the MVP.
