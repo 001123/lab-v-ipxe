@@ -4,7 +4,7 @@ import os
 import strconv
 
 pub const app_name = 'lab-v-ipxe'
-pub const version = '0.0.4'
+pub const version = '0.0.5'
 
 pub const default_admin_email = 'admin@ipxe.local'
 pub const default_admin_password = 'admin@pwd'

@@ -1,6 +1,6 @@
 # iPXE ZTP
 
-[![Version](https://img.shields.io/badge/version-0.0.4-blue?style=flat-square)](https://github.com/001123/lab-v-ipxe/releases)
+[![Version](https://img.shields.io/badge/version-0.0.5-blue?style=flat-square)](https://github.com/001123/lab-v-ipxe/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Packaging](https://img.shields.io/badge/packaging-single_binary-7C3AED?style=flat-square)](https://github.com/001123/lab-v-ipxe)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-24292e?style=flat-square&logo=linux&logoColor=white)](https://github.com/001123/lab-v-ipxe)
