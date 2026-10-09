@@ -86,10 +86,28 @@ Public callback endpoint invoked by cloud-init's `late-commands` upon OS install
 ## 3. Settings & System Endpoints
 
 #### `GET /api/settings`
-Returns global server configuration (base URL, default NFS host, default subnet).
+Returns global server configuration (base URL, default OS images, default SSH keys, default APT mirror URL).
 
 #### `PUT /api/settings`
-Updates global server configuration.
+Updates global server configuration (including `apt_mirror_default`).
+
+#### `POST /api/settings/test-apt-mirror`
+Probes target APT mirror URL for reachability and measures HTTP round-trip latency.
+- **Request Body**:
+  ```json
+  {
+    "url": "http://vn.archive.ubuntu.com/ubuntu/"
+  }
+  ```
+- **Example Response**:
+  ```json
+  {
+    "ok": true,
+    "status_code": 200,
+    "latency_ms": 483,
+    "message": "Mirror reachable (483ms, HTTP 200)"
+  }
+  ```
 
 #### `POST /api/assets/fetch`
 Triggers downloading, caching, and ISO extraction for a specific OS release.

@@ -13,7 +13,8 @@ Máy bật nguồn → router (OpenWrt dnsmasq, iPXE qua TFTP) → chain http://
   │                  (chưa có kernel/initrd → tự tải ISO, trích xuất ~100MB, xóa file ISO)
   ├─ install done  → late-command gửi POST /api/machines/installed → "installed"
   │                  (hoặc bấm thủ công "Mark installed" trên web)
-  └─ installed     → sanboot từ ổ cứng cục bộ (ngăn chặn vòng lặp cài lại khi khởi động)
+  ├─ installed     → sanboot từ ổ cứng cục bộ (ngăn chặn vòng lặp cài lại khi khởi động)
+  └─ Day-1 ready   → 🚀 Sẵn sàng cho Ansible (khóa SSH, sudo NOPASSWD, Python 3, APT mirror tối ưu)
 ```
 
 ## Thiết Kế Kiến Trúc
@@ -32,11 +33,13 @@ Dự án được xây dựng dựa trên triết lý tối giản, hiệu năng
 - Đồng bộ dữ liệu thời gian thực và cập nhật giao diện mượt mà với **SWR**.
 - Toàn bộ kết quả build (`web/out`) được nhúng trực tiếp vào file nhị phân V bằng `$embed_file` thông qua script sinh mã `scripts/gen_embed.vsh`.
 
-### 3. Động Cơ Cài Đặt (Provisioning Engine)
+### 3. Động Cơ Cài Đặt & Tự Động Hóa (Provisioning & Day-1 Engine)
 - **Hệ điều hành mục tiêu**: Ubuntu Server 24.04.5 LTS & 26.04.1 (phiên bản point-release cố định).
 - **Giao thức khởi động**: NFS boot mang lại tốc độ truyền tải cao trong mạng nội bộ.
 - **Bộ nhớ đệm ISO thông minh**: Tự động tải file ISO Ubuntu chính thức theo nhu cầu, chỉ trích xuất ~100MB chứa `vmlinuz` cùng `initrd` để lưu cache và xóa ngay file ISO dung lượng lớn.
 - **Phân vùng ổ cứng**: Các mẫu cấu hình sẵn: `direct` (ext4), `zfs` root (tự động tối ưu tham số ARC theo dung lượng RAM) hoặc `lvm`.
+- **Cấu hình APT Mirror linh hoạt**: Cho phép chỉnh sửa URL mirror hoặc dùng cache LAN (như `apt-cacher-ng`), tích hợp tính năng probe đo latency trực tiếp từ Web UI.
+- **Bàn giao Day-1 hoàn chỉnh**: Cài đặt sẵn Python 3, cấu hình NOPASSWD trong `/etc/sudoers.d/90-lab-nopasswd` giúp các playbook Ansible chạy ngay lập tức mà không cần bất kỳ bước cấu hình thủ công nào sau khi cài xong.
 
 ## Bước Tiếp Theo
 

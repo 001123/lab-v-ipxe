@@ -86,10 +86,28 @@ Endpoint công khai nhận callback phone-home từ lệnh `late-commands` của
 ## 3. Nhóm API Thiết Lập & Trạng Thái Hệ Thống
 
 #### `GET /api/settings`
-Lấy toàn bộ cấu hình máy chủ (Base URL, địa chỉ NFS mặc định, dải mạng subnet).
+Lấy toàn bộ cấu hình máy chủ (Base URL, danh mục OS images, SSH keys mặc định, APT mirror mặc định).
 
 #### `PUT /api/settings`
-Cập nhật cấu hình máy chủ.
+Cập nhật cấu hình máy chủ (bao gồm `apt_mirror_default`).
+
+#### `POST /api/settings/test-apt-mirror`
+Kiểm tra khả năng kết nối và đo độ trễ tới URL APT mirror mục tiêu.
+- **Request Body**:
+  ```json
+  {
+    "url": "http://vn.archive.ubuntu.com/ubuntu/"
+  }
+  ```
+- **Response mẫu**:
+  ```json
+  {
+    "ok": true,
+    "status_code": 200,
+    "latency_ms": 483,
+    "message": "Mirror reachable (483ms, HTTP 200)"
+  }
+  ```
 
 #### `POST /api/assets/fetch`
 Kích hoạt tiến trình tải ISO từ internet, trích xuất kernel/initrd và lưu cache cho một bản phân phối OS.

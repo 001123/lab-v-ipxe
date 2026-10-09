@@ -88,5 +88,20 @@ Thế mạnh nổi bật của **iPXE ZTP** là khả năng quản lý vòng đ�
   ```
   Lệnh này bàn giao quyền kiểm soát ngay cho ổ cứng đầu tiên của máy, triệt tiêu nguy cơ máy bị rơi vào vòng lặp cài lại liên tục.
 
-### 5. Cài Đặt Lại (Reinstall)
+### 5. Sẵn Sàng Cho Ansible Ngay Lập Tức (Day-1 Integration)
+Một điểm cộng vượt trội của **lab-v-ipxe** so với các hệ thống PXE truyền thống là khả năng **tự động hóa hoàn toàn từ Day-0 sang Day-1**:
+- **Sudo NOPASSWD tự động**: File `/etc/sudoers.d/90-lab-nopasswd` được sinh sẵn qua `late-commands`. Điều này giải quyết triệt để vấn đề `sudo-rs` (mặc định trên Ubuntu 24.04/26.04) làm timeout prompt mật khẩu khi Ansible thực thi `become: yes`.
+- **SSH Key & Python 3**: Khóa SSH công khai của quản trị viên được tích hợp thẳng vào `~/.ssh/authorized_keys`, và môi trường đã có sẵn Python 3 (`/usr/bin/python3`).
+- **Tốc độ APT tối ưu**: File `/etc/apt/sources.list.d/ubuntu.sources` đã được cấu hình trỏ thẳng về mirror tối ưu (hoặc mirror nội bộ trong LAN).
+- **Kiểm tra tức thì không cần cấu hình thêm**:
+  ```bash
+  # Kiểm tra kết nối và thu thập facts
+  ansible all -i '<machine-ip>,' -m ping -u ubuntu
+
+  # Nâng quyền root qua sudo mà không cần nhập mật khẩu
+  ansible all -i '<machine-ip>,' -m command -a 'whoami' -u ubuntu -b
+  ```
+Ngay khi trạng thái trên Web Console chuyển sang `installed`, các pipeline CI/CD hoặc playbook Ansible có thể tự động nhảy vào cài đặt Kubernetes (K3s), Docker hoặc Tailscale mà không cần bất kỳ sự can thiệp thủ công nào của con người.
+
+### 6. Cài Đặt Lại (Reinstall)
 Bất cứ khi nào bạn muốn cài mới lại một máy, chỉ cần bấm nút **Cài Lại (Reinstall)** trong Web Console. Trạng thái máy sẽ quay về `approved` và tự động cài đặt lại trong lần khởi động tiếp theo.

@@ -88,5 +88,20 @@ The core strength of **iPXE ZTP** is its autonomous machine lifecycle management
   ```
   This immediately delegates control to the local hard drive, preventing infinite reinstall loops.
 
-### 5. Reinstallation
+### 5. Ansible-Ready Out-of-the-Box (Day-1 Integration)
+A significant advantage of **lab-v-ipxe** over conventional PXE solutions is its seamless **Day-0 to Day-1 automation**:
+- **Automatic Passwordless Sudo**: `/etc/sudoers.d/90-lab-nopasswd` (`ubuntu ALL=(ALL) NOPASSWD:ALL`) is provisioned via `late-commands`. This permanently fixes compatibility issues with `sudo-rs` (shipped in Ubuntu 24.04/26.04), whose password prompt format causes standard Ansible password-based `become` prompts to hang or time out.
+- **SSH Key & Python 3**: Your SSH public key is pre-injected into `~/.ssh/authorized_keys`, and Python 3 is verified in PATH.
+- **Optimized APT Repos**: Sources are configured to point directly to your preferred mirror or LAN caching proxy.
+- **Instant verification**:
+  ```bash
+  # Check connectivity and discover facts
+  ansible all -i '<machine-ip>,' -m ping -u ubuntu
+
+  # Sudo privilege escalation without password prompts
+  ansible all -i '<machine-ip>,' -m command -a 'whoami' -u ubuntu -b
+  ```
+The instant a node switches to `installed` on the Web Console, automated CI/CD runners or Ansible playbooks can immediately take over (e.g. bootstrapping K3s clusters, configuring Docker, or provisioning Tailscale) with zero manual setup.
+
+### 6. Reinstallation
 If you ever want to re-provision a node, click the **Reinstall** button in the Web Console. The machine status flips back to `approved` and will automatically re-install on its next boot.
