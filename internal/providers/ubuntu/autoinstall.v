@@ -37,6 +37,7 @@ pub fn render_user_data(req boot.BootRequest) string {
 	lines << '  refresh-installer:'
 	lines << '    update: false'
 	lines << '  apt:'
+	lines << '    disable_suites: [security]'
 	lines << '    conf: |'
 	lines << '      Acquire::ForceIPv4 "true";'
 	lines << '  keyboard:'
@@ -77,6 +78,9 @@ pub fn render_user_data(req boot.BootRequest) string {
 	// sudo-rs, whose auth prompt breaks Ansible's password-based become.
 	lines << '    - curtin in-target -- sh -c "printf \'${sh_sq(req.username)} ALL=(ALL) NOPASSWD:ALL\\n\' > /etc/sudoers.d/90-lab-nopasswd && chmod 440 /etc/sudoers.d/90-lab-nopasswd"'
 	lines << '    - curtin in-target -- systemctl enable qemu-guest-agent'
+	// Restore security repository disabled during autoinstall so subsequent
+	// package updates (e.g. via Ansible or apt upgrade) receive security patches.
+	lines << '    - curtin in-target -- sh -c \'rel=\$(. /etc/os-release && echo "\$UBUNTU_CODENAME"); if [ -f /etc/apt/sources.list.d/ubuntu.sources ] && ! grep -q "\${rel}-security" /etc/apt/sources.list.d/ubuntu.sources; then printf "\\nTypes: deb\\nURIs: http://security.ubuntu.com/ubuntu/\\nSuites: %s-security\\nComponents: main restricted universe multiverse\\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\\n" "\$rel" >> /etc/apt/sources.list.d/ubuntu.sources; elif [ -f /etc/apt/sources.list ] && ! grep -q "\${rel}-security" /etc/apt/sources.list; then echo "deb http://security.ubuntu.com/ubuntu/ \${rel}-security main restricted universe multiverse" >> /etc/apt/sources.list; fi\''
 	if req.keep_ipxe_first {
 		lines << '    - curtin in-target -- sh -c \'if [ -d /sys/firmware/efi/efivars ] && command -v efibootmgr >/dev/null 2>&1; then pxe=\$(efibootmgr | grep "^BootCurrent:" | cut -d" " -f2 | tr -d " \\r\\n"); if [ -n "\$pxe" ] && ! efibootmgr | grep -E "^Boot\$pxe\\*?" | grep -qiE "pxe|ipv4|ipxe|network|ethernet"; then pxe=""; fi; [ -z "\$pxe" ] && pxe=\$(efibootmgr | grep -iE "pxe|ipv4|ipxe|network|ethernet" | head -n1 | sed -n "s/^Boot\\([0-9A-Fa-f]\\{4\\}\\).*/\\1/p"); cur=\$(efibootmgr | grep "^BootOrder:" | cut -d" " -f2 | tr -d " \\r\\n"); if [ -n "\$pxe" ] && [ -n "\$cur" ]; then ord="\$pxe"; IFS=","; for x in \$cur; do [ "\$x" != "\$pxe" ] && ord="\$ord,\$x"; done; unset IFS; efibootmgr -o "\$ord" || true; fi; fi\''
 	}

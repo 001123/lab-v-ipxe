@@ -62,6 +62,8 @@ fn test_user_data_zfs_defaults() {
 	assert ud.contains('    username: "timi"')
 	assert ud.contains('    password: "${fallback_password_hash}"')
 	assert ud.contains('Acquire::ForceIPv4 "true";')
+	assert ud.contains('    disable_suites: [security]')
+	assert ud.contains('sources.list.d/ubuntu.sources')
 	assert ud.contains('      name: zfs')
 	assert ud.contains('      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKey timi@workstation"')
 	assert ud.contains('      - "ssh-rsa AAAAB3Nza example2"')
