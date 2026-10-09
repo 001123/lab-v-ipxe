@@ -90,6 +90,7 @@ fn test_full_api_flow() {
 	assert seeded.assets[0].os_name == 'ubuntu'
 	assert seeded.assets[0].version == config.default_ubuntu_version
 	assert seeded.assets[0].phase == 'ready'
+	assert seeded.apt_mirror_default == ''
 
 	// empty machine list
 	res4 := http.fetch(url: '${test_base}/api/machines', header: h_auth(token))!
@@ -115,6 +116,24 @@ fn test_full_api_flow() {
 	)!
 	assert res4d.status_code == 200
 	assert json2.decode[SettingsRes](res4d.body)!.ssh_keys_default == 'ssh-ed25519 AAAA global@host'
+
+	// apt mirror: set, echo back, normalize trailing slash, clear with 'default'
+	res4_apt := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"apt_mirror_default":"http://vn.archive.ubuntu.com/ubuntu"}'
+	)!
+	assert res4_apt.status_code == 200
+	assert json2.decode[SettingsRes](res4_apt.body)!.apt_mirror_default == 'http://vn.archive.ubuntu.com/ubuntu/'
+	res4_apt_reset := http.fetch(
+		method: .put
+		url:    '${test_base}/api/settings'
+		header: h_json_auth(token)
+		data:   '{"apt_mirror_default":"default"}'
+	)!
+	assert res4_apt_reset.status_code == 200
+	assert json2.decode[SettingsRes](res4_apt_reset.body)!.apt_mirror_default == ''
 
 	// invalid ssh keys / base_url are rejected at the boundary
 	res4db := http.fetch(

@@ -1,6 +1,7 @@
 module server
 
 import json2
+import internal.config
 import internal.lib.macutils
 import internal.lib.sha512crypt
 import internal.store
@@ -320,6 +321,7 @@ pub fn (mut app App) machines_phone_home(mut ctx Context) veb.Result {
 	m.installed_at = store.now_unix()
 	m.last_seen_at = store.now_unix()
 	app.st.machine_save(mut m) or { return server_error(mut ctx, err.msg()) }
+	println('[boot] v${config.version} machine ${mac} (${m.hostname}) reported installed')
 	return ctx.json(OkRes{
 		ok: true
 	})

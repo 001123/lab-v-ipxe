@@ -1,5 +1,6 @@
 module boot
 
+import internal.config
 import internal.store
 
 fn test_boot_action_table() {
@@ -39,12 +40,14 @@ fn test_transition_installing_and_installed_are_stable() {
 fn test_wait_and_sanboot_scripts() {
 	w := wait_script('http://10.0.0.5:4793', 'BC:24:11:00:24:99', 'waiting for approval')
 	assert w.starts_with('#!ipxe')
+	assert w.contains('echo lab-v-ipxe v${config.version}: waiting for approval')
 	assert w.contains('chain http://10.0.0.5:4793/boot.ipxe?mac=BC:24:11:00:24:99')
 	assert w.contains('sleep 10')
 
 	s := sanboot_script()
+	assert s.contains('echo lab-v-ipxe v${config.version}: system installed')
 	assert s.contains('sanboot --no-describe --drive 0x80')
 
 	e := error_script('boom')
-	assert e.contains('ERROR: boom')
+	assert e.contains('echo lab-v-ipxe v${config.version} ERROR: boom')
 }

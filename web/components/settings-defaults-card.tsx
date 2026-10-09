@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import {
+  ActivityIcon,
   CircleCheckIcon,
   CircleXIcon,
   ClockIcon,
@@ -49,14 +50,15 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useSettings } from '@/hooks/use-settings'
-import { apiErrorMessage } from '@/lib/api'
+import { api, apiErrorMessage } from '@/lib/api'
 import { imageLabel } from '@/lib/os-images'
-import type { AssetPhase, OsImage, ProviderInfo, SettingsRes } from '@/lib/types'
+import type { AssetPhase, OsImage, ProviderInfo, SettingsRes, TestAptMirrorRes } from '@/lib/types'
 
 interface Form {
   images: OsImage[]
   ssh_keys_default: string
   base_url_override: string
+  apt_mirror_default: string
 }
 
 function areImagesEqual(a: OsImage[], b: OsImage[]): boolean {
@@ -78,6 +80,7 @@ function computeIsDirty(form: Form | null, settings: SettingsRes | undefined): b
   if (!form || !settings) return false
   if (form.ssh_keys_default.trim() !== (settings.ssh_keys_default ?? '').trim()) return true
   if (form.base_url_override.trim() !== (settings.base_url_override ?? '').trim()) return true
+  if (form.apt_mirror_default.trim() !== (settings.apt_mirror_default ?? '').trim()) return true
   if (!areImagesEqual(form.images, settings.os_images ?? [])) return true
   return false
 }
@@ -171,7 +174,12 @@ function parseSshKeys(raw: string): {
   return { keys, error: null }
 }
 
-function validate(images: OsImage[], baseUrl: string, sshError: string | null): string | null {
+function validate(
+  images: OsImage[],
+  baseUrl: string,
+  aptMirror: string,
+  sshError: string | null
+): string | null {
   if (images.length === 0) return 'Add at least one OS image'
   const seen = new Set<string>()
   for (const img of images) {
@@ -191,6 +199,15 @@ function validate(images: OsImage[], baseUrl: string, sshError: string | null): 
       return 'iPXE Server URL cannot contain whitespace'
     }
   }
+  const cleanMirror = aptMirror.trim()
+  if (cleanMirror) {
+    if (!cleanMirror.startsWith('http://') && !cleanMirror.startsWith('https://')) {
+      return 'Ubuntu APT mirror URL must start with http:// or https://'
+    }
+    if (/\s/.test(cleanMirror)) {
+      return 'Ubuntu APT mirror URL cannot contain whitespace'
+    }
+  }
   if (sshError) {
     return sshError
   }
@@ -203,6 +220,8 @@ export function SettingsDefaultsCard() {
   const [saving, setSaving] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [browserOrigin, setBrowserOrigin] = useState('')
+  const [testingMirror, setTestingMirror] = useState(false)
+  const [mirrorTestResult, setMirrorTestResult] = useState<TestAptMirrorRes | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -218,6 +237,7 @@ export function SettingsDefaultsCard() {
       images: settings.os_images.map((img) => ({ ...img })),
       ssh_keys_default: settings.ssh_keys_default,
       base_url_override: settings.base_url_override,
+      apt_mirror_default: settings.apt_mirror_default ?? '',
     })
   }
 
@@ -280,7 +300,12 @@ export function SettingsDefaultsCard() {
   async function onSave() {
     if (!form) return
     const parsedSsh = parseSshKeys(form.ssh_keys_default)
-    const problem = validate(form.images, form.base_url_override, parsedSsh.error)
+    const problem = validate(
+      form.images,
+      form.base_url_override,
+      form.apt_mirror_default,
+      parsedSsh.error
+    )
     if (problem) {
       toast.warning(problem)
       return
@@ -290,9 +315,12 @@ export function SettingsDefaultsCard() {
       // If the user cleared the textarea, send 'auto' so backend resets the setting in DB
       const sshPayload =
         form.ssh_keys_default.trim() === '' ? 'auto' : form.ssh_keys_default.trim()
+      const aptMirrorPayload =
+        form.apt_mirror_default.trim() === '' ? 'default' : form.apt_mirror_default.trim()
       const res = await save({
         ssh_keys_default: sshPayload,
         base_url_override: form.base_url_override,
+        apt_mirror_default: aptMirrorPayload,
         os_images: form.images.map((img) => ({ ...img, nfs_root: img.nfs_root.trim() })),
       })
       // resync from the response so server-side normalization (default row) shows up
@@ -300,6 +328,7 @@ export function SettingsDefaultsCard() {
         images: res.os_images.map((img) => ({ ...img })),
         ssh_keys_default: res.ssh_keys_default,
         base_url_override: res.base_url_override,
+        apt_mirror_default: res.apt_mirror_default ?? '',
       })
       toast.success('Settings saved')
     } catch (err) {
@@ -311,12 +340,35 @@ export function SettingsDefaultsCard() {
 
   const isDirty = computeIsDirty(form, settings)
 
+  async function onTestMirror() {
+    setTestingMirror(true)
+    setMirrorTestResult(null)
+    try {
+      const res = await api<TestAptMirrorRes>('/api/settings/test-apt-mirror', {
+        method: 'POST',
+        body: JSON.stringify({ url: form?.apt_mirror_default || 'default' }),
+      })
+      setMirrorTestResult(res)
+      if (res.ok) {
+        toast.success(res.message)
+      } else {
+        toast.error(res.message)
+      }
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setTestingMirror(false)
+    }
+  }
+
   function onDiscard() {
     if (!settings) return
+    setMirrorTestResult(null)
     setForm({
       images: settings.os_images.map((img) => ({ ...img })),
       ssh_keys_default: settings.ssh_keys_default,
       base_url_override: settings.base_url_override,
+      apt_mirror_default: settings.apt_mirror_default ?? '',
     })
     toast.info('Changes discarded')
   }
@@ -327,6 +379,14 @@ export function SettingsDefaultsCard() {
       ? 'URL must start with http:// or https://'
       : rawBaseUrl && /\s/.test(rawBaseUrl)
         ? 'URL cannot contain whitespace'
+        : null
+
+  const rawAptMirror = form?.apt_mirror_default?.trim() ?? ''
+  const aptMirrorError =
+    rawAptMirror && !rawAptMirror.startsWith('http://') && !rawAptMirror.startsWith('https://')
+      ? 'Mirror URL must start with http:// or https://'
+      : rawAptMirror && /\s/.test(rawAptMirror)
+        ? 'Mirror URL cannot contain whitespace'
         : null
 
   const parsedSsh = parseSshKeys(form?.ssh_keys_default ?? '')
@@ -600,6 +660,116 @@ export function SettingsDefaultsCard() {
                 <span className="text-muted-foreground">
                   Auto-detect mode: server dynamically resolves from the client request Host header
                   {browserOrigin ? ` (currently ${browserOrigin})` : ''}.
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-2.5 rounded-lg border p-3.5 bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Label htmlFor="settings-apt-mirror" className="text-sm font-semibold">
+                  Ubuntu APT Mirror URL
+                </Label>
+                <Badge variant={form?.apt_mirror_default?.trim() ? 'default' : 'secondary'}>
+                  {form?.apt_mirror_default?.trim() ? 'Custom Mirror' : 'Default (Canonical)'}
+                </Badge>
+                {mirrorTestResult && (
+                  <Badge
+                    variant={mirrorTestResult.ok ? 'outline' : 'destructive'}
+                    className={
+                      mirrorTestResult.ok
+                        ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 text-xs font-mono gap-1'
+                        : 'text-xs gap-1'
+                    }
+                  >
+                    {mirrorTestResult.ok ? (
+                      <CircleCheckIcon className="size-3 text-emerald-500" />
+                    ) : (
+                      <CircleXIcon className="size-3" />
+                    )}
+                    {mirrorTestResult.message}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Package repository for autoinstall packages and /etc/apt/sources.list.d/ubuntu.sources post-install.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onTestMirror}
+                disabled={testingMirror}
+                title="Test connection and response time from server to this mirror"
+                className="gap-1.5"
+              >
+                {testingMirror ? (
+                  <Loader2Icon data-icon="inline-start" className="size-3.5 animate-spin" />
+                ) : (
+                  <ActivityIcon data-icon="inline-start" className="size-3.5 text-blue-500" />
+                )}
+                <span>Test Mirror</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setMirrorTestResult(null)
+                  setForm((f) =>
+                    f ? { ...f, apt_mirror_default: 'http://vn.archive.ubuntu.com/ubuntu/' } : f
+                  )
+                }}
+                disabled={form?.apt_mirror_default?.trim() === 'http://vn.archive.ubuntu.com/ubuntu/'}
+                title="Use fast Vietnam archive mirror (ping < 10ms)"
+              >
+                Mirror VN
+              </Button>
+              {form?.apt_mirror_default && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setMirrorTestResult(null)
+                    setForm((f) => (f ? { ...f, apt_mirror_default: '' } : f))
+                  }}
+                  title="Reset to official Canonical default (archive.ubuntu.com)"
+                >
+                  <RotateCcwIcon data-icon="inline-start" />
+                  Default (Canonical)
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-1">
+            <Input
+              id="settings-apt-mirror"
+              value={form?.apt_mirror_default ?? ''}
+              onChange={(e) => {
+                setMirrorTestResult(null)
+                setForm((f) => (f ? { ...f, apt_mirror_default: e.target.value } : f))
+              }}
+              placeholder="http://archive.ubuntu.com/ubuntu/ (empty = Canonical default)"
+              className={`font-mono text-sm ${aptMirrorError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+            />
+            <div className="flex items-center justify-between text-xs">
+              {aptMirrorError ? (
+                <span className="text-destructive font-medium">{aptMirrorError}</span>
+              ) : form?.apt_mirror_default?.trim() ? (
+                <span className="text-muted-foreground">
+                  Machines will use this custom mirror for all apt repositories and security updates.
+                </span>
+              ) : (
+                <span className="text-muted-foreground">
+                  Default mode: uses Canonical official archive. Click &quot;Mirror VN&quot; for high-speed local mirror.
                 </span>
               )}
             </div>

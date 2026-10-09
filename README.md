@@ -1,6 +1,6 @@
 # iPXE ZTP
 
-[![Version](https://img.shields.io/badge/version-0.0.5-blue?style=flat-square)](https://github.com/001123/lab-v-ipxe/releases)
+[![Version](https://img.shields.io/badge/version-0.0.6-blue?style=flat-square)](https://github.com/001123/lab-v-ipxe/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Packaging](https://img.shields.io/badge/packaging-single_binary-7C3AED?style=flat-square)](https://github.com/001123/lab-v-ipxe)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-24292e?style=flat-square&logo=linux&logoColor=white)](https://github.com/001123/lab-v-ipxe)
@@ -74,7 +74,7 @@ Asset source order: **cache** (`<data>/assets/ubuntu/<ver>/`) → **assets dir**
 - **Login** — bearer-token session (`veb.auth`), light/dark theme toggle, version badge.
 - **Machines** — table of all machines with status (`pending` / `approved` / `installing` / `installed`); actions: Approve, Reinstall, Mark installed, Delete. The edit drawer covers hostname, MAC, OS image, boot mode, NFS root override, storage layout + install disk, username / password / SSH keys, and notes.
 - **Settings**
-  - *Global Configuration*: OS image catalog (`{OS, version, NFS export, default}` + per-row asset status / fetch button), base URL override, default SSH keys.
+  - *Global Configuration*: OS image catalog (`{OS, version, NFS export, default}` + per-row asset status / fetch button), base URL override, default SSH keys, and **Ubuntu APT mirror** (with presets and a live **Test Mirror** probe for latency/reachability).
   - *Server*: data dir / paths and the ISO extractors detected on the host.
   - *Info*: runtime mode (production single port vs. dev `:4793` + `:4794`), process memory of backend / frontend, uptime.
 
@@ -168,7 +168,8 @@ curl -X POST -d 'mac=bc:24:11:00:24:99&hostname=vm-test' http://127.0.0.1:4793/a
 | `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me` | login public, rest Bearer | Session |
 | `GET/POST /api/machines` · `GET/PUT/DELETE /api/machines/:id` | Bearer | Machine CRUD |
 | `POST /api/machines/:id/{approve,reinstall,mark-installed}` | Bearer | Lifecycle actions |
-| `GET/PUT /api/settings` | Bearer | OS image catalog, base URL override, default SSH keys (`"auto"` clears) |
+| `GET/PUT /api/settings` | Bearer | OS image catalog, base URL override, default SSH keys, default APT mirror URL (`"auto"` clears) |
+| `POST /api/settings/test-apt-mirror` | Bearer | Test reachability & measure latency of target APT mirror URL |
 | `POST /api/assets/fetch` | Bearer | Fetch kernel/initrd (body `{os_name, version}` or empty = all images) |
 | `GET /api/system/info` | Bearer | Runtime mode, process memory, uptime |
 | `GET /*` | public | Embedded SPA |
@@ -176,6 +177,7 @@ curl -X POST -d 'mac=bc:24:11:00:24:99&hostname=vm-test' http://127.0.0.1:4793/a
 ## Technical notes
 
 - **OS images (Settings)**: defaults are an **image list** `{OS, version, NFS export, default}` (stored in the `os_images` setting; old DBs auto-migrate the 2 keys `nfs_root_default`/`ubuntu_version` on startup). A machine picks an image when created/approved and **inherits** the NFS export from the corresponding row (per-machine overrides are kept); machines discovered via PXE for the first time get the image marked as default. Version rules: **3 parts** (`26.04.1`, `24.04.5`) = pin the exact point release, download exactly that ISO (no auto-latest — avoids drift from the NFS export); **2 parts** (`26.04`) = auto-detect the latest `.N` release. Adding a **new point release** of a supported series (e.g. `26.04.2`) = add a row in the UI/API + a new NFS export, **no code changes needed**; adding a **new series** = 1 line in `internal/providers/ubuntu/ubuntu.v` `versions()`; adding **another OS** = implement `OSProvider` (`name/display_name/versions/supports_version/assets_ready/install_script/user_data/meta_data`) + register it in `internal/server/app.v` → it automatically appears in the dropdown.
+- **APT Mirror & Fast Offline Install**: During initial installation Subiquity sets `disable_suites: [security, updates, backports]` to prevent slow remote package indexing and hangs when upstream Canonical mirrors are sluggish. The configured APT mirror (`apt_mirror_default` in Settings, default fallback `http://archive.ubuntu.com/ubuntu/`) is injected into `apt.primary`. In addition, `late-commands` rewrites `/etc/apt/sources.list.d/ubuntu.sources` (and legacy `/etc/apt/sources.list`) to use this mirror for all suites (`archive`, `updates`, `backports`, `security`) so the installed OS stays fast and up-to-date post-installation. Admins can test mirror connectivity and latency directly in Settings via the **Test Mirror** button (`POST /api/settings/test-apt-mirror`). Local mirrors or caching proxies (e.g. `http://192.168.x.x:3142/ubuntu/`) are fully supported.
 - **Boot mode**: `nfs` (default, implemented) or `http` (selectable in the API/UI, but the Ubuntu provider currently returns a "not implemented yet" error for it).
 - **Storage layout**: `direct` (ext4, default), `zfs` or `lvm`. `zfs` adds late-commands writing `/etc/modprobe.d/zfs.conf` (`zfs_arc_max=512MiB`, `zfs_arc_min=128MiB`) + `update-initramfs -u` — needed for low-RAM machines. The per-machine **Install disk** field (drawer) accepts a `/dev/...` path (e.g. `/dev/nvme0n1`, `/dev/disk/by-id/...`) → rendered as `storage.layout.match.path`; leave empty = subiquity picks the largest disk, enter `auto` to reset to the default.
 - **Ansible-ready**: autoinstall pre-creates `/etc/sudoers.d/90-lab-nopasswd` (NOPASSWD for the admin user) — Ubuntu 26.04 uses sudo-rs, whose auth prompt differs from the format Ansible expects, so password-based become times out. Installed machines come with sshd + python3 → run `ansible -b` right away with no extra configuration.

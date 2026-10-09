@@ -22,4 +22,5 @@ pub mut:
 	install_count   int
 	boot_mode       store.BootMode
 	keep_ipxe_first bool
+	apt_mirror      string // '' -> provider fallback
 }

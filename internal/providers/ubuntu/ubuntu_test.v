@@ -1,6 +1,7 @@
 module ubuntu
 
 import internal.boot
+import internal.config
 import os
 import internal.lib.sha512crypt
 import time
@@ -30,6 +31,7 @@ fn test_nfs_install_script() {
 	u := new(new_assets('/nonexistent-cache', '', '', false))
 	s := u.install_script(sample_req())!
 	assert s.starts_with('#!ipxe')
+	assert s.contains('echo lab-v-ipxe v${config.version}: installing vm-test (ubuntu 24.04.5, NFS mode)')
 	assert s.contains('kernel http://192.168.250.10:4793/assets/ubuntu/24.04.5/vmlinuz')
 	assert s.contains('root=/dev/ram0 ramdisk_size=3500000 boot=casper')
 	assert s.contains('netboot=nfs nfsroot=192.168.250.4:/srv/nfs/ubuntu-24.04.5')
@@ -61,8 +63,9 @@ fn test_user_data_zfs_defaults() {
 	assert ud.contains('    hostname: "vm-test"')
 	assert ud.contains('    username: "timi"')
 	assert ud.contains('    password: "${fallback_password_hash}"')
-	assert ud.contains('Acquire::ForceIPv4 "true";')
-	assert ud.contains('    disable_suites: [security]')
+	assert ud.contains('    fallback: offline-install')
+	assert ud.contains('uri: http://archive.ubuntu.com/ubuntu/')
+	assert ud.contains('    disable_suites: [security, updates, backports]')
 	assert ud.contains('sources.list.d/ubuntu.sources')
 	assert ud.contains('      name: zfs')
 	assert ud.contains('      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKey timi@workstation"')
@@ -77,6 +80,15 @@ fn test_user_data_zfs_defaults() {
 	assert ud.contains('systemctl enable qemu-guest-agent')
 	assert ud.contains('mac=BC:24:11:00:24:99&hostname=vm-test')
 	assert ud.contains('http://192.168.250.10:4793/api/machines/installed')
+}
+
+fn test_user_data_custom_apt_mirror() {
+	mut req := sample_req()
+	req.apt_mirror = 'http://192.168.250.4:3142/ubuntu'
+	ud := render_user_data(req)
+	assert ud.contains('uri: http://192.168.250.4:3142/ubuntu/')
+	assert ud.contains('URIs: http://192.168.250.4:3142/ubuntu/')
+	assert ud.contains('deb http://192.168.250.4:3142/ubuntu/ %s-security')
 }
 
 fn test_user_data_keep_ipxe_first_disabled() {
@@ -117,8 +129,8 @@ fn test_user_data_escapes_injection() {
 	// the injected newline stays inside the JSON-escaped double-quoted scalar
 	assert ud.contains('hostname: "vm-test\\n  malicious-key: 1"')
 	assert !ud.contains('\n  malicious-key:')
-	// the sudoers late-command shell-escapes the single quote
-	assert ud.contains("printf 'timi'\\''$(id) ALL=(ALL) NOPASSWD:ALL")
+	// the sudoers late-command shell-escapes the single quote inside a JSON/YAML-encoded scalar
+	assert ud.contains("printf 'timi'\\\\''$(id) ALL=(ALL) NOPASSWD:ALL")
 	// the phone-home payload URL-encodes the hostname
 	assert ud.contains('hostname=vm-test%0A')
 	assert !ud.contains('hostname=vm-test\n')
@@ -131,7 +143,7 @@ fn test_nfs_install_script_sanitizes_hostname() {
 	s := u.install_script(req)!
 	lines := s.split_into_lines()
 	assert lines.len == 5
-	assert lines[1] == 'echo lab-v-ipxe: installing vm-chain-http---evil-script.ipxe (ubuntu 24.04.5, NFS mode)'
+	assert lines[1] == 'echo lab-v-ipxe v${config.version}: installing vm-chain-http---evil-script.ipxe (ubuntu 24.04.5, NFS mode)'
 	assert !s.contains('\nchain http')
 }
 

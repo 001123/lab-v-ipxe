@@ -96,6 +96,7 @@ export interface SettingsRes {
   db_path: string
   base_url_override: string
   ssh_keys_default: string
+  apt_mirror_default: string
   os_images: OsImage[]
   providers: ProviderInfo[]
   extractors: string[]
@@ -106,10 +107,18 @@ export interface SettingsRes {
 export interface SettingsPayload {
   ssh_keys_default?: string
   base_url_override?: string
+  apt_mirror_default?: string
   os_images?: OsImage[]
 }
 
 export interface AssetFetchPayload {
   os_name?: string
   version?: string
+}
+
+export interface TestAptMirrorRes {
+  ok: boolean
+  status_code: number
+  latency_ms: number
+  message: string
 }

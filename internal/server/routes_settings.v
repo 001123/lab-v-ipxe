@@ -2,9 +2,24 @@ module server
 
 import internal.config
 import json2
+import net.http
 import internal.providers.ubuntu
 import internal.store
+import time
 import veb
+
+pub struct TestAptMirrorPayload {
+pub:
+	url string
+}
+
+pub struct TestAptMirrorRes {
+pub:
+	ok          bool
+	status_code int
+	latency_ms  i64
+	message     string
+}
 
 pub struct AssetStatusDto {
 pub:
@@ -27,22 +42,24 @@ pub:
 
 pub struct SettingsRes {
 pub:
-	data_dir          string
-	db_path           string
-	base_url_override string
-	ssh_keys_default  string
-	os_images         []store.OsImage
-	providers         []ProviderDto
-	extractors        []string
-	assets            []AssetStatusDto
-	system            SystemInfo
+	data_dir           string
+	db_path            string
+	base_url_override  string
+	ssh_keys_default   string
+	apt_mirror_default string
+	os_images          []store.OsImage
+	providers          []ProviderDto
+	extractors         []string
+	assets             []AssetStatusDto
+	system             SystemInfo
 }
 
 pub struct SettingsPayload {
 pub:
-	ssh_keys_default  string
-	base_url_override string
-	os_images         []store.OsImage
+	ssh_keys_default   string
+	base_url_override  string
+	apt_mirror_default string
+	os_images          []store.OsImage
 }
 
 pub struct AssetFetchPayload {
@@ -81,15 +98,16 @@ fn (mut app App) build_settings_res() SettingsRes {
 		}
 	}
 	return SettingsRes{
-		data_dir:          app.cfg.data_dir
-		db_path:           config.db_path(app.cfg.data_dir)
-		base_url_override: app.st.setting_or(store.setting_base_url, app.cfg.base_url)
-		ssh_keys_default:  app.st.setting_or(store.setting_ssh_keys, '')
-		os_images:         images
-		providers:         providers
-		extractors:        ubuntu.available_extractors()
-		assets:            assets
-		system:            app.get_system_info()
+		data_dir:           app.cfg.data_dir
+		db_path:            config.db_path(app.cfg.data_dir)
+		base_url_override:  app.st.setting_or(store.setting_base_url, app.cfg.base_url)
+		ssh_keys_default:   app.st.setting_or(store.setting_ssh_keys, '')
+		apt_mirror_default: app.st.setting_or(store.setting_apt_mirror, '')
+		os_images:          images
+		providers:          providers
+		extractors:         ubuntu.available_extractors()
+		assets:             assets
+		system:             app.get_system_info()
 	}
 }
 
@@ -169,7 +187,11 @@ pub fn (mut app App) settings_put(mut ctx Context) veb.Result {
 		}
 	}
 	base_url := payload.base_url_override.trim_space()
-	if base_url != '' {
+	if base_url == 'auto' {
+		app.st.set_setting(store.setting_base_url, '') or {
+			return server_error(mut ctx, err.msg())
+		}
+	} else if base_url != '' {
 		valid := base_url_from(base_url) or { return bad_request(mut ctx, err.msg()) }
 		app.st.set_setting(store.setting_base_url, valid) or {
 			return server_error(mut ctx, err.msg())
@@ -183,6 +205,17 @@ pub fn (mut app App) settings_put(mut ctx Context) veb.Result {
 	} else if ssh != '' {
 		valid := ssh_keys_from(ssh) or { return bad_request(mut ctx, err.msg()) }
 		app.st.set_setting(store.setting_ssh_keys, valid) or {
+			return server_error(mut ctx, err.msg())
+		}
+	}
+	mirror := payload.apt_mirror_default.trim_space()
+	if mirror == 'auto' || mirror == 'default' {
+		app.st.set_setting(store.setting_apt_mirror, '') or {
+			return server_error(mut ctx, err.msg())
+		}
+	} else if mirror != '' {
+		valid := apt_mirror_from(mirror) or { return bad_request(mut ctx, err.msg()) }
+		app.st.set_setting(store.setting_apt_mirror, valid) or {
 			return server_error(mut ctx, err.msg())
 		}
 	}
@@ -218,6 +251,53 @@ pub fn (mut app App) assets_fetch(mut ctx Context) veb.Result {
 		return bad_request(mut ctx, 'provide both os_name and version, or neither')
 	}
 	return ctx.json(app.build_settings_res())
+}
+
+@['/api/settings/test-apt-mirror'; post]
+pub fn (mut app App) test_apt_mirror(mut ctx Context) veb.Result {
+	payload := json2.decode[TestAptMirrorPayload](ctx.req.data) or {
+		return bad_request(mut ctx, 'invalid json body')
+	}
+	raw := payload.url.trim_space()
+	target_url := if raw == '' || raw == 'default' {
+		ubuntu.default_apt_mirror
+	} else {
+		apt_mirror_from(raw) or { return bad_request(mut ctx, err.msg()) }
+	}
+
+	start := time.ticks()
+	resp := http.fetch(http.FetchConfig{
+		url:           target_url
+		method:        .get
+		read_timeout:  5 * time.second
+		write_timeout: 5 * time.second
+		max_retries:   1
+	}) or {
+		latency := time.ticks() - start
+		return ctx.json(TestAptMirrorRes{
+			ok:          false
+			status_code: 0
+			latency_ms:  latency
+			message:     'Connection failed: ${err.msg()}'
+		})
+	}
+
+	latency := time.ticks() - start
+	if resp.status_code >= 200 && resp.status_code < 400 {
+		return ctx.json(TestAptMirrorRes{
+			ok:          true
+			status_code: resp.status_code
+			latency_ms:  latency
+			message:     'Mirror reachable (${latency}ms, HTTP ${resp.status_code})'
+		})
+	}
+
+	return ctx.json(TestAptMirrorRes{
+		ok:          false
+		status_code: resp.status_code
+		latency_ms:  latency
+		message:     'Mirror returned HTTP ${resp.status_code}'
+	})
 }
 
 @['/api/system/info'; get]

@@ -266,3 +266,14 @@ fn is_valid_base_url(v string) bool {
 	}
 	return true
 }
+
+fn apt_mirror_from(s string) !string {
+	v := s.trim_space()
+	if v == '' || v == 'default' {
+		return ''
+	}
+	if !is_valid_base_url(v) {
+		return error('invalid apt_mirror "${s}" (expected http(s)://host[:port]/path)')
+	}
+	return if v.ends_with('/') { v } else { '${v}/' }
+}

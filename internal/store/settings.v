@@ -10,6 +10,7 @@ pub const setting_os_images = 'os_images'
 pub const setting_base_url = 'base_url_override'
 pub const setting_ubuntu_iso = 'ubuntu_iso_override'
 pub const setting_ssh_keys = 'ssh_keys_default'
+pub const setting_apt_mirror = 'apt_mirror_default'
 
 pub fn (s &Store) setting(key string) ?string {
 	s.mu.lock()

@@ -67,6 +67,7 @@ fn (app &App) request_for(m &store.Machine, base_url string) boot.BootRequest {
 		install_count:   m.install_count
 		boot_mode:       m.boot_mode
 		keep_ipxe_first: m.keep_ipxe_first
+		apt_mirror:      app.st.setting_or(store.setting_apt_mirror, '')
 	}
 }
 
@@ -111,7 +112,9 @@ pub fn (mut app App) boot_ipxe(mut ctx Context) veb.Result {
 			return ctx.text(boot.error_script('os image "${m.os_name} ${m.os_version}" is not configured; add it under Settings > OS images'))
 		}
 	}
-	return match boot.boot_action(m.status, provider.assets_ready(req)) {
+	action := boot.boot_action(m.status, provider.assets_ready(req))
+	println('[boot] v${config.version} /boot.ipxe mac=${mac} hostname=${m.hostname} status=${m.status} action=${action}')
+	return match action {
 		.wait_approval {
 			ctx.text(boot.wait_script(base_url, mac, 'this machine is waiting for approval.'))
 		}
@@ -158,6 +161,7 @@ fn serve_seed_file(app &App, mut ctx Context, os_name string, version string, ma
 	} else {
 		body = '#cloud-config\n'
 	}
+	println('[boot] v${config.version} serving ${file} mac=${mac} hostname=${m.hostname} os=${os_name}/${version}')
 	return ctx.text(body)
 }
 
