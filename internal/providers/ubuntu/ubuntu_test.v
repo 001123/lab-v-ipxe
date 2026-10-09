@@ -68,8 +68,7 @@ fn test_user_data_zfs_defaults() {
 	assert ud.contains('zfs_arc_max=536870912')
 	assert ud.contains('zfs_arc_min=134217728')
 	assert ud.contains('update-initramfs -u')
-	assert ud.contains('early-commands:')
-	assert ud.contains('ipxe_boot_current')
+	assert ud.contains('curtin in-target -- sh -c')
 	assert ud.contains('efibootmgr -o')
 	assert ud.contains('timi ALL=(ALL) NOPASSWD:ALL')
 	assert ud.contains('/etc/sudoers.d/90-lab-nopasswd')
@@ -82,8 +81,6 @@ fn test_user_data_keep_ipxe_first_disabled() {
 	mut req := sample_req()
 	req.keep_ipxe_first = false
 	ud := render_user_data(req)
-	assert !ud.contains('early-commands:')
-	assert !ud.contains('ipxe_boot_current')
 	assert !ud.contains('efibootmgr -o')
 }
 

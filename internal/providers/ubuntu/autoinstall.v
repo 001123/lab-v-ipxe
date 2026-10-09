@@ -39,10 +39,6 @@ pub fn render_user_data(req boot.BootRequest) string {
 	lines << '  apt:'
 	lines << '    conf: |'
 	lines << '      Acquire::ForceIPv4 "true";'
-	if req.keep_ipxe_first {
-		lines << '  early-commands:'
-		lines << '    - sh -c "test -d /sys/firmware/efi/efivars && efibootmgr | grep \'^BootCurrent:\' | cut -d\' \' -f2 > /run/ipxe_boot_current || true"'
-	}
 	lines << '  keyboard:'
 	lines << '    layout: us'
 	lines << '  locale: en_US.UTF-8'
@@ -82,7 +78,7 @@ pub fn render_user_data(req boot.BootRequest) string {
 	lines << '    - curtin in-target -- sh -c "printf \'${sh_sq(req.username)} ALL=(ALL) NOPASSWD:ALL\\n\' > /etc/sudoers.d/90-lab-nopasswd && chmod 440 /etc/sudoers.d/90-lab-nopasswd"'
 	lines << '    - curtin in-target -- systemctl enable qemu-guest-agent'
 	if req.keep_ipxe_first {
-		lines << '    - sh -c \'if [ -d /sys/firmware/efi/efivars ] && command -v efibootmgr >/dev/null 2>&1; then pxe=\$(cat /run/ipxe_boot_current 2>/dev/null | tr -d " \\r\\n"); [ -z "\$pxe" ] && pxe=\$(efibootmgr | grep -iE "pxe|ipv4|ipxe|network|ethernet" | head -n1 | sed -n "s/^Boot\\([0-9A-Fa-f]\\{4\\}\\).*/\\1/p"); u=\$(efibootmgr | grep -i "ubuntu" | head -n1 | sed -n "s/^Boot\\([0-9A-Fa-f]\\{4\\}\\).*/\\1/p"); cur=\$(efibootmgr | grep "^BootOrder:" | cut -d" " -f2 | tr -d " \\r\\n"); if [ -n "\$pxe" ]; then ord="\$pxe"; [ -n "\$u" ] && [ "\$u" != "\$pxe" ] && ord="\$ord,\$u"; IFS=","; for x in \$cur; do case ",\$ord," in *",\$x,"*) ;; *) ord="\$ord,\$x" ;; esac; done; unset IFS; efibootmgr -o "\$ord" || true; fi; fi\''
+		lines << '    - curtin in-target -- sh -c \'if [ -d /sys/firmware/efi/efivars ] && command -v efibootmgr >/dev/null 2>&1; then pxe=\$(efibootmgr | grep "^BootCurrent:" | cut -d" " -f2 | tr -d " \\r\\n"); if [ -n "\$pxe" ] && ! efibootmgr | grep -E "^Boot\$pxe\\*?" | grep -qiE "pxe|ipv4|ipxe|network|ethernet"; then pxe=""; fi; [ -z "\$pxe" ] && pxe=\$(efibootmgr | grep -iE "pxe|ipv4|ipxe|network|ethernet" | head -n1 | sed -n "s/^Boot\\([0-9A-Fa-f]\\{4\\}\\).*/\\1/p"); cur=\$(efibootmgr | grep "^BootOrder:" | cut -d" " -f2 | tr -d " \\r\\n"); if [ -n "\$pxe" ] && [ -n "\$cur" ]; then ord="\$pxe"; IFS=","; for x in \$cur; do [ "\$x" != "\$pxe" ] && ord="\$ord,\$x"; done; unset IFS; efibootmgr -o "\$ord" || true; fi; fi\''
 	}
 	lines << '    - curtin in-target -- curl -sS -X POST -d "mac=${req.mac}&hostname=${urllib.query_escape(req.hostname)}" ${req.base_url}/api/machines/installed || true'
 	return lines.join('\n') + '\n'

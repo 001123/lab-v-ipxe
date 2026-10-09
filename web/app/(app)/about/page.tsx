@@ -413,20 +413,20 @@ export default function AboutPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-              {/* Release v0.0.1 */}
+              {/* Current Release */}
               <div className="relative border-l-2 border-primary/40 pl-4 sm:pl-6 space-y-2.5 sm:space-y-3">
                 <div className="absolute -left-[5px] top-1.5 size-2.5 rounded-full border-2 border-primary bg-background" />
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm sm:text-base font-semibold text-foreground">v0.0.1</span>
+                  <span className="font-mono text-sm sm:text-base font-semibold text-foreground">v{APP_VERSION}</span>
                   <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] sm:text-[11px]">
                     Current Release
                   </Badge>
-                  <span className="text-[11px] sm:text-xs text-muted-foreground">• Baseline MVP</span>
+                  <span className="text-[11px] sm:text-xs text-muted-foreground">• Active Deployment</span>
                 </div>
 
                 <div className="space-y-2 text-xs text-muted-foreground">
-                  <p className="text-foreground font-medium">Initial release of the iPXE ZTP server with core features:</p>
+                  <p className="text-foreground font-medium">Production release of the iPXE ZTP server with core features:</p>
                   <ul className="list-disc pl-4 space-y-1.5 leading-relaxed">
                     <li>Single self-contained binary packaging V/veb backend and Next.js 16 frontend.</li>
                     <li>Zero-touch bare-metal machine discovery and MAC address approval workflow.</li>
@@ -439,9 +439,9 @@ export default function AboutPage() {
                 </div>
               </div>
 
-              {/* Future releases note */}
+              {/* Releases link note */}
               <div className="rounded-lg border border-dashed p-3.5 sm:p-4 text-xs text-muted-foreground bg-muted/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <span>Detailed release notes and change logs for future updates will be posted here.</span>
+                <span>Detailed release notes and change logs for all releases are available on GitHub.</span>
                 <a
                   href={`${GITHUB_REPO_URL}/releases`}
                   target="_blank"
@@ -451,7 +451,7 @@ export default function AboutPage() {
                     'h-8 text-xs font-medium w-full sm:w-auto justify-center'
                   )}
                 >
-                  <span>View on GitHub</span>
+                  <span>View all releases on GitHub</span>
                   <ExternalLink className="size-3 ml-1 opacity-60" />
                 </a>
               </div>

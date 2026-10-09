@@ -8,35 +8,35 @@ const dist_404_html = $embed_file('../../web/out/404.html')
 const dist___next___page___txt = $embed_file('../../web/out/__next.__PAGE__.txt')
 const dist___next__full_txt = $embed_file('../../web/out/__next._full.txt')
 const dist___next__tree_txt = $embed_file('../../web/out/__next._tree.txt')
-const dist__next_static_chunks_0_o74znen4827_js = $embed_file('../../web/out/_next/static/chunks/0-o74znen4827.js')
-const dist__next_static_chunks_059s_2nolp233_js = $embed_file('../../web/out/_next/static/chunks/059s_2nolp233.js')
-const dist__next_static_chunks_08wmk63i9wp73_js = $embed_file('../../web/out/_next/static/chunks/08wmk63i9wp73.js')
+const dist__next_static_chunks_01dw76vu0_4z5_js = $embed_file('../../web/out/_next/static/chunks/01dw76vu0_4z5.js')
 const dist__next_static_chunks_0cz1d0mv5g_q7_js = $embed_file('../../web/out/_next/static/chunks/0cz1d0mv5g_q7.js')
-const dist__next_static_chunks_0eud_jxk27rsl_js = $embed_file('../../web/out/_next/static/chunks/0eud_jxk27rsl.js')
-const dist__next_static_chunks_0op06vzwe7ymn_js = $embed_file('../../web/out/_next/static/chunks/0op06vzwe7ymn.js')
+const dist__next_static_chunks_0jq20dsfjea58_js = $embed_file('../../web/out/_next/static/chunks/0jq20dsfjea58.js')
 const dist__next_static_chunks_0u_zwkvd3n5cw_css = $embed_file('../../web/out/_next/static/chunks/0u_zwkvd3n5cw.css')
-const dist__next_static_chunks_0umf92h1sb77c_js = $embed_file('../../web/out/_next/static/chunks/0umf92h1sb77c.js')
-const dist__next_static_chunks_0zni7gve5ozea_js = $embed_file('../../web/out/_next/static/chunks/0zni7gve5ozea.js')
-const dist__next_static_chunks_10_eqe69d3bta_js = $embed_file('../../web/out/_next/static/chunks/10_eqe69d3bta.js')
-const dist__next_static_chunks_15_o9fg5n5p3h_js = $embed_file('../../web/out/_next/static/chunks/15_o9fg5n5p3h.js')
-const dist__next_static_chunks_15x5vmlu4i7e0_js = $embed_file('../../web/out/_next/static/chunks/15x5vmlu4i7e0.js')
-const dist__next_static_chunks_1kp81ber68hp0_js = $embed_file('../../web/out/_next/static/chunks/1kp81ber68hp0.js')
-const dist__next_static_chunks_1nj27ix4pzl6g_js = $embed_file('../../web/out/_next/static/chunks/1nj27ix4pzl6g.js')
-const dist__next_static_chunks_1xhlle_5f33g3_js = $embed_file('../../web/out/_next/static/chunks/1xhlle-5f33g3.js')
-const dist__next_static_chunks_27almvmeu7d88_js = $embed_file('../../web/out/_next/static/chunks/27almvmeu7d88.js')
-const dist__next_static_chunks_2bauw5r9uj7yf_js = $embed_file('../../web/out/_next/static/chunks/2bauw5r9uj7yf.js')
-const dist__next_static_chunks_2c0rfo45ki61o_js = $embed_file('../../web/out/_next/static/chunks/2c0rfo45ki61o.js')
-const dist__next_static_chunks_2j5xcxw_6__80_js = $embed_file('../../web/out/_next/static/chunks/2j5xcxw-6--80.js')
-const dist__next_static_chunks_3nma0652a_lp5_js = $embed_file('../../web/out/_next/static/chunks/3nma0652a_lp5.js')
-const dist__next_static_chunks_3srfjz42u14tx_js = $embed_file('../../web/out/_next/static/chunks/3srfjz42u14tx.js')
-const dist__next_static_chunks_3texyk7f3i3w6_js = $embed_file('../../web/out/_next/static/chunks/3texyk7f3i3w6.js')
-const dist__next_static_chunks_3zuxkmq0si4_0_js = $embed_file('../../web/out/_next/static/chunks/3zuxkmq0si4_0.js')
+const dist__next_static_chunks_1_8_4_r9d4voc_js = $embed_file('../../web/out/_next/static/chunks/1-8_4_r9d4voc.js')
+const dist__next_static_chunks_11krh8rg24kdu_js = $embed_file('../../web/out/_next/static/chunks/11krh8rg24kdu.js')
+const dist__next_static_chunks_16_cug564hbka_js = $embed_file('../../web/out/_next/static/chunks/16_cug564hbka.js')
+const dist__next_static_chunks_18yvf99sbj8z1_js = $embed_file('../../web/out/_next/static/chunks/18yvf99sbj8z1.js')
+const dist__next_static_chunks_1iecmho4hj_va_js = $embed_file('../../web/out/_next/static/chunks/1iecmho4hj-va.js')
+const dist__next_static_chunks_1wx62s6y0fguy_js = $embed_file('../../web/out/_next/static/chunks/1wx62s6y0fguy.js')
+const dist__next_static_chunks_1zqh5akra4msu_js = $embed_file('../../web/out/_next/static/chunks/1zqh5akra4msu.js')
+const dist__next_static_chunks_23rm614wt6giz_js = $embed_file('../../web/out/_next/static/chunks/23rm614wt6giz.js')
+const dist__next_static_chunks_2exz8rsjnm602_js = $embed_file('../../web/out/_next/static/chunks/2exz8rsjnm602.js')
+const dist__next_static_chunks_2gvdwzsu15d___js = $embed_file('../../web/out/_next/static/chunks/2gvdwzsu15d__.js')
+const dist__next_static_chunks_2xwizu2m8kx55_js = $embed_file('../../web/out/_next/static/chunks/2xwizu2m8kx55.js')
+const dist__next_static_chunks_31vrclkn44s6__js = $embed_file('../../web/out/_next/static/chunks/31vrclkn44s6-.js')
+const dist__next_static_chunks_3d18l7d4weseq_js = $embed_file('../../web/out/_next/static/chunks/3d18l7d4weseq.js')
+const dist__next_static_chunks_3e5rrt_fmzye7_js = $embed_file('../../web/out/_next/static/chunks/3e5rrt_fmzye7.js')
+const dist__next_static_chunks_3kt2xy2yfy6uh_js = $embed_file('../../web/out/_next/static/chunks/3kt2xy2yfy6uh.js')
+const dist__next_static_chunks_3pnqwi4ls0wrt_js = $embed_file('../../web/out/_next/static/chunks/3pnqwi4ls0wrt.js')
+const dist__next_static_chunks_3rvx5v3b9lkm2_js = $embed_file('../../web/out/_next/static/chunks/3rvx5v3b9lkm2.js')
+const dist__next_static_chunks_3rxmbdqq_6aqx_js = $embed_file('../../web/out/_next/static/chunks/3rxmbdqq-6aqx.js')
+const dist__next_static_chunks_3su51c_xy2rg2_js = $embed_file('../../web/out/_next/static/chunks/3su51c-xy2rg2.js')
 const dist__next_static_chunks_turbopack_3_ry682tkyiqk_js = $embed_file('../../web/out/_next/static/chunks/turbopack-3-ry682tkyiqk.js')
-const dist__next_static_gcbun4p8xi_kcl5mop2ax__buildmanifest_js = $embed_file('../../web/out/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_buildManifest.js')
-const dist__next_static_gcbun4p8xi_kcl5mop2ax__clientmiddlewaremanifest_js = $embed_file('../../web/out/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_clientMiddlewareManifest.js')
-const dist__next_static_gcbun4p8xi_kcl5mop2ax__ssgmanifest_js = $embed_file('../../web/out/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_ssgManifest.js')
 const dist__next_static_media_favicon_0ofp2drdyhedy_ico = $embed_file('../../web/out/_next/static/media/favicon.0ofp2drdyhedy.ico')
 const dist__next_static_media_icon_0e2i373nb5gfy_svg = $embed_file('../../web/out/_next/static/media/icon.0e2i373nb5gfy.svg')
+const dist__next_static_mgpfxaa_ljztwvmyojwvh__buildmanifest_js = $embed_file('../../web/out/_next/static/mgpfxAa-LjZTwVMyojwvH/_buildManifest.js')
+const dist__next_static_mgpfxaa_ljztwvmyojwvh__clientmiddlewaremanifest_js = $embed_file('../../web/out/_next/static/mgpfxAa-LjZTwVMyojwvH/_clientMiddlewareManifest.js')
+const dist__next_static_mgpfxaa_ljztwvmyojwvh__ssgmanifest_js = $embed_file('../../web/out/_next/static/mgpfxAa-LjZTwVMyojwvH/_ssgManifest.js')
 const dist__not_found_html = $embed_file('../../web/out/_not-found.html')
 const dist__not_found_txt = $embed_file('../../web/out/_not-found.txt')
 const dist__not_found___next__full_txt = $embed_file('../../web/out/_not-found/__next._full.txt')
@@ -75,46 +75,46 @@ pub fn get(path string) ?embed_file.EmbedFileData {
 		'/__next.__PAGE__.txt' { dist___next___page___txt }
 		'/__next._full.txt' { dist___next__full_txt }
 		'/__next._tree.txt' { dist___next__tree_txt }
-		'/_next/static/chunks/0-o74znen4827.js' { dist__next_static_chunks_0_o74znen4827_js }
-		'/_next/static/chunks/059s_2nolp233.js' { dist__next_static_chunks_059s_2nolp233_js }
-		'/_next/static/chunks/08wmk63i9wp73.js' { dist__next_static_chunks_08wmk63i9wp73_js }
+		'/_next/static/chunks/01dw76vu0_4z5.js' { dist__next_static_chunks_01dw76vu0_4z5_js }
 		'/_next/static/chunks/0cz1d0mv5g_q7.js' { dist__next_static_chunks_0cz1d0mv5g_q7_js }
-		'/_next/static/chunks/0eud_jxk27rsl.js' { dist__next_static_chunks_0eud_jxk27rsl_js }
-		'/_next/static/chunks/0op06vzwe7ymn.js' { dist__next_static_chunks_0op06vzwe7ymn_js }
+		'/_next/static/chunks/0jq20dsfjea58.js' { dist__next_static_chunks_0jq20dsfjea58_js }
 		'/_next/static/chunks/0u_zwkvd3n5cw.css' { dist__next_static_chunks_0u_zwkvd3n5cw_css }
-		'/_next/static/chunks/0umf92h1sb77c.js' { dist__next_static_chunks_0umf92h1sb77c_js }
-		'/_next/static/chunks/0zni7gve5ozea.js' { dist__next_static_chunks_0zni7gve5ozea_js }
-		'/_next/static/chunks/10_eqe69d3bta.js' { dist__next_static_chunks_10_eqe69d3bta_js }
-		'/_next/static/chunks/15_o9fg5n5p3h.js' { dist__next_static_chunks_15_o9fg5n5p3h_js }
-		'/_next/static/chunks/15x5vmlu4i7e0.js' { dist__next_static_chunks_15x5vmlu4i7e0_js }
-		'/_next/static/chunks/1kp81ber68hp0.js' { dist__next_static_chunks_1kp81ber68hp0_js }
-		'/_next/static/chunks/1nj27ix4pzl6g.js' { dist__next_static_chunks_1nj27ix4pzl6g_js }
-		'/_next/static/chunks/1xhlle-5f33g3.js' { dist__next_static_chunks_1xhlle_5f33g3_js }
-		'/_next/static/chunks/27almvmeu7d88.js' { dist__next_static_chunks_27almvmeu7d88_js }
-		'/_next/static/chunks/2bauw5r9uj7yf.js' { dist__next_static_chunks_2bauw5r9uj7yf_js }
-		'/_next/static/chunks/2c0rfo45ki61o.js' { dist__next_static_chunks_2c0rfo45ki61o_js }
-		'/_next/static/chunks/2j5xcxw-6--80.js' { dist__next_static_chunks_2j5xcxw_6__80_js }
-		'/_next/static/chunks/3nma0652a_lp5.js' { dist__next_static_chunks_3nma0652a_lp5_js }
-		'/_next/static/chunks/3srfjz42u14tx.js' { dist__next_static_chunks_3srfjz42u14tx_js }
-		'/_next/static/chunks/3texyk7f3i3w6.js' { dist__next_static_chunks_3texyk7f3i3w6_js }
-		'/_next/static/chunks/3zuxkmq0si4_0.js' { dist__next_static_chunks_3zuxkmq0si4_0_js }
+		'/_next/static/chunks/1-8_4_r9d4voc.js' { dist__next_static_chunks_1_8_4_r9d4voc_js }
+		'/_next/static/chunks/11krh8rg24kdu.js' { dist__next_static_chunks_11krh8rg24kdu_js }
+		'/_next/static/chunks/16_cug564hbka.js' { dist__next_static_chunks_16_cug564hbka_js }
+		'/_next/static/chunks/18yvf99sbj8z1.js' { dist__next_static_chunks_18yvf99sbj8z1_js }
+		'/_next/static/chunks/1iecmho4hj-va.js' { dist__next_static_chunks_1iecmho4hj_va_js }
+		'/_next/static/chunks/1wx62s6y0fguy.js' { dist__next_static_chunks_1wx62s6y0fguy_js }
+		'/_next/static/chunks/1zqh5akra4msu.js' { dist__next_static_chunks_1zqh5akra4msu_js }
+		'/_next/static/chunks/23rm614wt6giz.js' { dist__next_static_chunks_23rm614wt6giz_js }
+		'/_next/static/chunks/2exz8rsjnm602.js' { dist__next_static_chunks_2exz8rsjnm602_js }
+		'/_next/static/chunks/2gvdwzsu15d__.js' { dist__next_static_chunks_2gvdwzsu15d___js }
+		'/_next/static/chunks/2xwizu2m8kx55.js' { dist__next_static_chunks_2xwizu2m8kx55_js }
+		'/_next/static/chunks/31vrclkn44s6-.js' { dist__next_static_chunks_31vrclkn44s6__js }
+		'/_next/static/chunks/3d18l7d4weseq.js' { dist__next_static_chunks_3d18l7d4weseq_js }
+		'/_next/static/chunks/3e5rrt_fmzye7.js' { dist__next_static_chunks_3e5rrt_fmzye7_js }
+		'/_next/static/chunks/3kt2xy2yfy6uh.js' { dist__next_static_chunks_3kt2xy2yfy6uh_js }
+		'/_next/static/chunks/3pnqwi4ls0wrt.js' { dist__next_static_chunks_3pnqwi4ls0wrt_js }
+		'/_next/static/chunks/3rvx5v3b9lkm2.js' { dist__next_static_chunks_3rvx5v3b9lkm2_js }
+		'/_next/static/chunks/3rxmbdqq-6aqx.js' { dist__next_static_chunks_3rxmbdqq_6aqx_js }
+		'/_next/static/chunks/3su51c-xy2rg2.js' { dist__next_static_chunks_3su51c_xy2rg2_js }
 		'/_next/static/chunks/turbopack-3-ry682tkyiqk.js' {
 			dist__next_static_chunks_turbopack_3_ry682tkyiqk_js
-		}
-		'/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_buildManifest.js' {
-			dist__next_static_gcbun4p8xi_kcl5mop2ax__buildmanifest_js
-		}
-		'/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_clientMiddlewareManifest.js' {
-			dist__next_static_gcbun4p8xi_kcl5mop2ax__clientmiddlewaremanifest_js
-		}
-		'/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_ssgManifest.js' {
-			dist__next_static_gcbun4p8xi_kcl5mop2ax__ssgmanifest_js
 		}
 		'/_next/static/media/favicon.0ofp2drdyhedy.ico' {
 			dist__next_static_media_favicon_0ofp2drdyhedy_ico
 		}
 		'/_next/static/media/icon.0e2i373nb5gfy.svg' {
 			dist__next_static_media_icon_0e2i373nb5gfy_svg
+		}
+		'/_next/static/mgpfxAa-LjZTwVMyojwvH/_buildManifest.js' {
+			dist__next_static_mgpfxaa_ljztwvmyojwvh__buildmanifest_js
+		}
+		'/_next/static/mgpfxAa-LjZTwVMyojwvH/_clientMiddlewareManifest.js' {
+			dist__next_static_mgpfxaa_ljztwvmyojwvh__clientmiddlewaremanifest_js
+		}
+		'/_next/static/mgpfxAa-LjZTwVMyojwvH/_ssgManifest.js' {
+			dist__next_static_mgpfxaa_ljztwvmyojwvh__ssgmanifest_js
 		}
 		'/_not-found.html' { dist__not_found_html }
 		'/_not-found.txt' { dist__not_found_txt }
@@ -196,25 +196,25 @@ pub fn index() ?embed_file.EmbedFileData {
 // paths lists every embedded file path.
 pub fn paths() []string {
 	return ['/404.html', '/__next.__PAGE__.txt', '/__next._full.txt', '/__next._tree.txt',
-		'/_next/static/chunks/0-o74znen4827.js', '/_next/static/chunks/059s_2nolp233.js',
-		'/_next/static/chunks/08wmk63i9wp73.js', '/_next/static/chunks/0cz1d0mv5g_q7.js',
-		'/_next/static/chunks/0eud_jxk27rsl.js', '/_next/static/chunks/0op06vzwe7ymn.js',
-		'/_next/static/chunks/0u_zwkvd3n5cw.css', '/_next/static/chunks/0umf92h1sb77c.js',
-		'/_next/static/chunks/0zni7gve5ozea.js', '/_next/static/chunks/10_eqe69d3bta.js',
-		'/_next/static/chunks/15_o9fg5n5p3h.js', '/_next/static/chunks/15x5vmlu4i7e0.js',
-		'/_next/static/chunks/1kp81ber68hp0.js', '/_next/static/chunks/1nj27ix4pzl6g.js',
-		'/_next/static/chunks/1xhlle-5f33g3.js', '/_next/static/chunks/27almvmeu7d88.js',
-		'/_next/static/chunks/2bauw5r9uj7yf.js', '/_next/static/chunks/2c0rfo45ki61o.js',
-		'/_next/static/chunks/2j5xcxw-6--80.js', '/_next/static/chunks/3nma0652a_lp5.js',
-		'/_next/static/chunks/3srfjz42u14tx.js', '/_next/static/chunks/3texyk7f3i3w6.js',
-		'/_next/static/chunks/3zuxkmq0si4_0.js', '/_next/static/chunks/turbopack-3-ry682tkyiqk.js',
-		'/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_buildManifest.js',
-		'/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_clientMiddlewareManifest.js',
-		'/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_ssgManifest.js',
+		'/_next/static/chunks/01dw76vu0_4z5.js', '/_next/static/chunks/0cz1d0mv5g_q7.js',
+		'/_next/static/chunks/0jq20dsfjea58.js', '/_next/static/chunks/0u_zwkvd3n5cw.css',
+		'/_next/static/chunks/1-8_4_r9d4voc.js', '/_next/static/chunks/11krh8rg24kdu.js',
+		'/_next/static/chunks/16_cug564hbka.js', '/_next/static/chunks/18yvf99sbj8z1.js',
+		'/_next/static/chunks/1iecmho4hj-va.js', '/_next/static/chunks/1wx62s6y0fguy.js',
+		'/_next/static/chunks/1zqh5akra4msu.js', '/_next/static/chunks/23rm614wt6giz.js',
+		'/_next/static/chunks/2exz8rsjnm602.js', '/_next/static/chunks/2gvdwzsu15d__.js',
+		'/_next/static/chunks/2xwizu2m8kx55.js', '/_next/static/chunks/31vrclkn44s6-.js',
+		'/_next/static/chunks/3d18l7d4weseq.js', '/_next/static/chunks/3e5rrt_fmzye7.js',
+		'/_next/static/chunks/3kt2xy2yfy6uh.js', '/_next/static/chunks/3pnqwi4ls0wrt.js',
+		'/_next/static/chunks/3rvx5v3b9lkm2.js', '/_next/static/chunks/3rxmbdqq-6aqx.js',
+		'/_next/static/chunks/3su51c-xy2rg2.js', '/_next/static/chunks/turbopack-3-ry682tkyiqk.js',
 		'/_next/static/media/favicon.0ofp2drdyhedy.ico', '/_next/static/media/icon.0e2i373nb5gfy.svg',
-		'/_not-found.html', '/_not-found.txt', '/_not-found/__next._full.txt',
-		'/_not-found/__next._not-found.__PAGE__.txt', '/_not-found/__next._tree.txt', '/about.html',
-		'/about.txt', '/about/__next.!KGFwcCk.about.__PAGE__.txt', '/about/__next._full.txt',
+		'/_next/static/mgpfxAa-LjZTwVMyojwvH/_buildManifest.js',
+		'/_next/static/mgpfxAa-LjZTwVMyojwvH/_clientMiddlewareManifest.js',
+		'/_next/static/mgpfxAa-LjZTwVMyojwvH/_ssgManifest.js', '/_not-found.html', '/_not-found.txt',
+		'/_not-found/__next._full.txt', '/_not-found/__next._not-found.__PAGE__.txt',
+		'/_not-found/__next._tree.txt', '/about.html', '/about.txt',
+		'/about/__next.!KGFwcCk.about.__PAGE__.txt', '/about/__next._full.txt',
 		'/about/__next._tree.txt', '/favicon.ico', '/icon.svg', '/index.html', '/index.txt',
 		'/login.html', '/login.txt', '/login/__next._full.txt', '/login/__next._tree.txt',
 		'/login/__next.login.__PAGE__.txt', '/machines.html', '/machines.txt',
@@ -228,5 +228,5 @@ pub fn paths() []string {
 // on disk. Dev builds read embedded files lazily from disk; if they are
 // gone, serving the UI must be disabled gracefully instead of crashing.
 pub fn sources_present() bool {
-	return os.exists(@VMODROOT + '/web/out/404.html') && os.exists(@VMODROOT + '/web/out/__next.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/__next._full.txt') && os.exists(@VMODROOT + '/web/out/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0-o74znen4827.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/059s_2nolp233.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/08wmk63i9wp73.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0cz1d0mv5g_q7.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0eud_jxk27rsl.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0op06vzwe7ymn.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0u_zwkvd3n5cw.css') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0umf92h1sb77c.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0zni7gve5ozea.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/10_eqe69d3bta.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/15_o9fg5n5p3h.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/15x5vmlu4i7e0.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/1kp81ber68hp0.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/1nj27ix4pzl6g.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/1xhlle-5f33g3.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/27almvmeu7d88.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/2bauw5r9uj7yf.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/2c0rfo45ki61o.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/2j5xcxw-6--80.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3nma0652a_lp5.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3srfjz42u14tx.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3texyk7f3i3w6.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3zuxkmq0si4_0.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/turbopack-3-ry682tkyiqk.js') && os.exists(@VMODROOT + '/web/out/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_buildManifest.js') && os.exists(@VMODROOT + '/web/out/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_clientMiddlewareManifest.js') && os.exists(@VMODROOT + '/web/out/_next/static/gCbUn4p8Xi_kCl5MoP2AX/_ssgManifest.js') && os.exists(@VMODROOT + '/web/out/_next/static/media/favicon.0ofp2drdyhedy.ico') && os.exists(@VMODROOT + '/web/out/_next/static/media/icon.0e2i373nb5gfy.svg') && os.exists(@VMODROOT + '/web/out/_not-found.html') && os.exists(@VMODROOT + '/web/out/_not-found.txt') && os.exists(@VMODROOT + '/web/out/_not-found/__next._full.txt') && os.exists(@VMODROOT + '/web/out/_not-found/__next._not-found.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/_not-found/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/about.html') && os.exists(@VMODROOT + '/web/out/about.txt') && os.exists(@VMODROOT + '/web/out/about/__next.!KGFwcCk.about.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/about/__next._full.txt') && os.exists(@VMODROOT + '/web/out/about/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/favicon.ico') && os.exists(@VMODROOT + '/web/out/icon.svg') && os.exists(@VMODROOT + '/web/out/index.html') && os.exists(@VMODROOT + '/web/out/index.txt') && os.exists(@VMODROOT + '/web/out/login.html') && os.exists(@VMODROOT + '/web/out/login.txt') && os.exists(@VMODROOT + '/web/out/login/__next._full.txt') && os.exists(@VMODROOT + '/web/out/login/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/login/__next.login.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/machines.html') && os.exists(@VMODROOT + '/web/out/machines.txt') && os.exists(@VMODROOT + '/web/out/machines/__next.!KGFwcCk.machines.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/machines/__next._full.txt') && os.exists(@VMODROOT + '/web/out/machines/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/settings.html') && os.exists(@VMODROOT + '/web/out/settings.txt') && os.exists(@VMODROOT + '/web/out/settings/__next.!KGFwcCk.settings.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/settings/__next._full.txt') && os.exists(@VMODROOT + '/web/out/settings/__next._tree.txt')
+	return os.exists(@VMODROOT + '/web/out/404.html') && os.exists(@VMODROOT + '/web/out/__next.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/__next._full.txt') && os.exists(@VMODROOT + '/web/out/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/01dw76vu0_4z5.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0cz1d0mv5g_q7.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0jq20dsfjea58.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/0u_zwkvd3n5cw.css') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/1-8_4_r9d4voc.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/11krh8rg24kdu.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/16_cug564hbka.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/18yvf99sbj8z1.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/1iecmho4hj-va.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/1wx62s6y0fguy.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/1zqh5akra4msu.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/23rm614wt6giz.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/2exz8rsjnm602.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/2gvdwzsu15d__.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/2xwizu2m8kx55.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/31vrclkn44s6-.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3d18l7d4weseq.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3e5rrt_fmzye7.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3kt2xy2yfy6uh.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3pnqwi4ls0wrt.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3rvx5v3b9lkm2.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3rxmbdqq-6aqx.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/3su51c-xy2rg2.js') && os.exists(@VMODROOT + '/web/out/_next/static/chunks/turbopack-3-ry682tkyiqk.js') && os.exists(@VMODROOT + '/web/out/_next/static/media/favicon.0ofp2drdyhedy.ico') && os.exists(@VMODROOT + '/web/out/_next/static/media/icon.0e2i373nb5gfy.svg') && os.exists(@VMODROOT + '/web/out/_next/static/mgpfxAa-LjZTwVMyojwvH/_buildManifest.js') && os.exists(@VMODROOT + '/web/out/_next/static/mgpfxAa-LjZTwVMyojwvH/_clientMiddlewareManifest.js') && os.exists(@VMODROOT + '/web/out/_next/static/mgpfxAa-LjZTwVMyojwvH/_ssgManifest.js') && os.exists(@VMODROOT + '/web/out/_not-found.html') && os.exists(@VMODROOT + '/web/out/_not-found.txt') && os.exists(@VMODROOT + '/web/out/_not-found/__next._full.txt') && os.exists(@VMODROOT + '/web/out/_not-found/__next._not-found.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/_not-found/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/about.html') && os.exists(@VMODROOT + '/web/out/about.txt') && os.exists(@VMODROOT + '/web/out/about/__next.!KGFwcCk.about.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/about/__next._full.txt') && os.exists(@VMODROOT + '/web/out/about/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/favicon.ico') && os.exists(@VMODROOT + '/web/out/icon.svg') && os.exists(@VMODROOT + '/web/out/index.html') && os.exists(@VMODROOT + '/web/out/index.txt') && os.exists(@VMODROOT + '/web/out/login.html') && os.exists(@VMODROOT + '/web/out/login.txt') && os.exists(@VMODROOT + '/web/out/login/__next._full.txt') && os.exists(@VMODROOT + '/web/out/login/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/login/__next.login.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/machines.html') && os.exists(@VMODROOT + '/web/out/machines.txt') && os.exists(@VMODROOT + '/web/out/machines/__next.!KGFwcCk.machines.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/machines/__next._full.txt') && os.exists(@VMODROOT + '/web/out/machines/__next._tree.txt') && os.exists(@VMODROOT + '/web/out/settings.html') && os.exists(@VMODROOT + '/web/out/settings.txt') && os.exists(@VMODROOT + '/web/out/settings/__next.!KGFwcCk.settings.__PAGE__.txt') && os.exists(@VMODROOT + '/web/out/settings/__next._full.txt') && os.exists(@VMODROOT + '/web/out/settings/__next._tree.txt')
 }

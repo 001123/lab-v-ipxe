@@ -2,6 +2,7 @@
 import logo from '../assets/logo.svg';
 import ztpWorkflow from '../assets/ztp-workflow.svg';
 import '../styles/custom.css';
+import pkg from '../../package.json';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
@@ -418,7 +419,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           GitHub
         </a>
         <span class="separator">•</span>
-        <span>v0.0.1</span>
+        <span>v{pkg.version}</span>
         <span class="separator">•</span>
         <a href={`${base}/en/getting-started/quickstart/`}>
           Quickstart
